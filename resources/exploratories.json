@@ -1,0 +1,12 @@
+{
+  "exploratory":
+  [
+    {
+      "name": "Lastfm_rock",
+      "network": "Lastfm",
+      "node_attributes": ["profile", "threshold"],
+      "edge_attributes": ["weight"],
+      "description": "Diffusion threshold and profiles computed on rock listening data"
+    }
+  ]
+}

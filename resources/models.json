@@ -1,0 +1,53 @@
+{
+  "endpoints": [
+    {
+      "name": "Threshold",
+      "uri": "/api/Threshold",
+      "params": {
+        "token": "access token"
+      }
+    },
+    {
+      "name": "SIR",
+      "uri": "/api/SIR",
+      "params": {
+        "token": "access token",
+        "beta": "Infection rate",
+        "gamma": "Recovery rate"
+      }
+    },
+    {
+      "name": "SI",
+      "uri": "/api/SI",
+      "params": {
+        "token": "access token",
+        "beta": "Infection rate"
+      }
+    },
+    {
+      "name": "SIS",
+      "uri": "/api/SIS",
+      "params": {
+        "token": "access token",
+        "beta": "Infection rate",
+        "lambda": "Recovery rate"
+      }
+    },
+    {
+      "name": "Profile",
+      "uri": "/api/Profile",
+      "params": {
+        "token": "access token"
+      },
+      "note": "Under development"
+    },
+    {
+      "name": "Profile-Threshold",
+      "uri": "/api/ProfileThreshold",
+      "params": {
+        "token": "access token"
+      },
+      "note": "Under development"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "endpoints":
+  [
+    {
+      "name": "ERGraph",
+      "uri": "/api/Generators/ERGraph",
+      "params": {"token": "access token", "n": "number of nodes", "p": "rewiring probability"}
+    },
+    {
+      "name": "BAGraph",
+      "uri": "/api/Generators/BarabasiAlbertGraph",
+      "params": {"token": "access token", "n": "number of nodes", "m": "number of edges per new node"}
+    }
+  ]
+}
