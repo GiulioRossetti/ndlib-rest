@@ -1,2 +1,2 @@
 # ndlib-rest
-Network Diffusion Library Service
+Network Diffusion Library REST Service
