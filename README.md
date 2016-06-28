@@ -1,7 +1,7 @@
 # ndlib-rest
 Network Diffusion Library REST Service.
 
-This project offers a REST interface for the [[ndlib|https://github.com/GiulioRossetti/ndlib]] Python library.
+This project offers a REST interface for the [ndlib](https://github.com/GiulioRossetti/ndlib) Python library.
 
 
 #### Tools
