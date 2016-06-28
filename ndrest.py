@@ -39,11 +39,6 @@ unavailable = 451
 not_implemented = 501
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
 class Experiment(Resource):
     """
     @apiDefine Experiment Experiment

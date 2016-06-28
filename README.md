@@ -1,5 +1,8 @@
 # ndlib-rest
-Network Diffusion Library REST Service
+Network Diffusion Library REST Service.
+
+This project offers a REST interface for the [[ndlib|https://github.com/GiulioRossetti/ndlib]] Python library.
+
 
 #### Tools
 * REST service: ndrest.py
@@ -9,17 +12,24 @@ Network Diffusion Library REST Service
   * Unittest: ndlib-rest/ndlib/ndlib_test
 * Python REST client: ndlib-rest/client
 
-Python 2.7 Dependencies:
 
-    abc, flask, flask_shelve, flask_restful, flask_apidoc, networkx, numpy
+Python 2.7 required dependencies:
+
+- abc
+- flask 
+- flask_shelve
+- flask_restful
+- flask_apidoc
+- networkx
+- numpy
 
 #### REST service setup
 Local testing
-```bash
+```python
     python ndrest.py
 ```
 
-Local testig with multiple workers (using gunicorn, http://gunicorn.org/ web server):
+Local testig with multiple workers (using [[gunicorn|http://gunicorn.org/]] web server):
 ```bash
     gunicorn -w num_workers -b 127.0.0.1:5000 ndrest:app
 ```
