@@ -29,7 +29,7 @@ Local testing
     python ndrest.py
 ```
 
-Local testig with multiple workers (using [[gunicorn|http://gunicorn.org/]] web server):
+Local testig with multiple workers (using [gunicorn](http://gunicorn.org/) web server):
 ```bash
     gunicorn -w num_workers -b 127.0.0.1:5000 ndrest:app
 ```
