@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - Website
     - REST tutorial
     - Python client tutorial
-    - Model description tutorial ([[ndlib|https://github.com/GiulioRossetti/ndlib]])
+    - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
     
     
 ## [0.7.0]
