@@ -9,6 +9,13 @@ All notable changes to this project will be documented in this file.
     - REST tutorial
     - Python client tutorial
     - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
+
+## [0.8.0]
+### Updated
+- Experiment Persistence Handling: form unique db to individual dbs
+
+### Added
+- Access Control Allow Origin header
     
     
 ## [0.7.0]

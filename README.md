@@ -17,11 +17,12 @@ Python 2.7 required dependencies:
 
 - abc
 - flask 
-- flask_shelve
+- flask-cors
 - flask_restful
 - flask_apidoc
 - networkx
 - numpy
+- shelve
 
 #### REST service setup
 Local testing

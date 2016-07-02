@@ -1,5 +1,7 @@
-from flask import Flask, request, render_template
-from flask_shelve import init_app, get_shelve
+from flask import Flask, request
+import shelve
+import os
+from flask.ext.cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
 from ndlib import ThresholdModel as tm
@@ -21,10 +23,9 @@ __author__ = "Giulio Rossetti"
 __email__ = "giulio.rossetti@gmail.com"
 
 app = Flask(__name__)
-app.config['SHELVE_FILENAME'] = 'data/db/experiments.db'
-init_app(app)
 api = Api(app)
 doc = ApiDoc(app=app)
+CORS(app)
 
 max_number_of_nodes = 100000
 
@@ -74,9 +75,9 @@ class Experiment(Resource):
         """
 
         token = str(uuid.uuid4())
-
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
         db[token] = {'net': None, 'models': {}}
+        db.close()
 
         return {'token': token}, success
 
@@ -92,12 +93,11 @@ class Experiment(Resource):
                         delete('http://localhost:5000/api/Experiment', data={'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
-
-        if token not in db:
+        try:
+            os.remove("data/db/%s" % token)
+        except:
             return {"Message": "Wrong Token"}, bad_request
 
-        del db[token]
         return {'Message': "Experiment Destroyed"}, success
 
 
@@ -115,7 +115,7 @@ class ExperimentStatus(Resource):
                         post('http://localhost:5000/api/ExperimentStatus')
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
             return {"Message": "Wrong Token"}, bad_request
@@ -126,8 +126,10 @@ class ExperimentStatus(Resource):
             net_info = {k: v for k, v in exp['net'].iteritems() if k != 'g'}
             models = {mname: exp['models'][mname].getinfo() for mname in exp['models']}
             result = {'Network': net_info, 'Models': models}
+            db.close()
             return result
         except:
+            db.close()
             return {'Message': 'No resources attached to this token'}, not_found
 
     def put(self):
@@ -144,9 +146,10 @@ class ExperimentStatus(Resource):
                         put('http://localhost:5000/api/ExperimentStatus', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         ml = []
@@ -165,8 +168,9 @@ class ExperimentStatus(Resource):
                 del db[token]['models'][mname]
                 db[token]['models'][mname] = m
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
-
+        db.close()
         return {'Message': 'Experiment cleaned'}, success
 
 
@@ -230,8 +234,9 @@ class Graph(Resource):
         """
 
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)         
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -246,10 +251,13 @@ class Graph(Resource):
                 g = db[token]['net']['g']
                 res = json_graph.node_link_data(g)
             else:
+                db.close()
                 return {"Message": "Dataset in read-only access."}, unavailable
         except:
+            db.close()
             return {"Message": "No graph resource assigned to the experiment"}, not_found
 
+        db.close()
         return res, success
 
 
@@ -313,9 +321,10 @@ class Networks(Resource):
             put('http://localhost:5000/api/Networks', data={'name': 'Last.fm','token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
-
+        db = shelve.open("data/db/%s" % token)
+        
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         directed = False
@@ -340,8 +349,10 @@ class Networks(Resource):
             r = db[token]
             r['net'] = {'g': g, 'name': name}
             db[token] = r
+            db.close()
             return {'Message': 'Network correctly loaded'}, success
         except:
+            db.close()
             return {'Message': "Wrong network name."}, bad_request
 
     def delete(self):
@@ -356,13 +367,15 @@ class Networks(Resource):
                         delete('http://localhost:5000/api/Networks', data={'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)         
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         del db[token]['net']
         db[token]['net'] = {}
+        db.close()
         return {'Message': 'Resource deleted'}, success
 
 
@@ -426,13 +439,15 @@ class ERGraph(Resource):
             put('http://localhost:5000/api/Generators/ERGraph', data={'n': n, 'p': p, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)         
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
+            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
         try:
@@ -447,8 +462,10 @@ class ERGraph(Resource):
             r['net'] = {'g': g, 'name': 'ERGraph', 'params': {'n': n, 'p': p}}
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -468,13 +485,15 @@ class BarabasiAlbertGraph(Resource):
             put('http://localhost:5000/api/Generators/BarabasiAlbertGraph', data={'n': n, 'm': m, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
+            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
         try:
@@ -485,8 +504,9 @@ class BarabasiAlbertGraph(Resource):
             r['net'] = {'g': g, 'name': 'BAGraph', 'params': {'n': n, 'm': m}}
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
-
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -507,13 +527,15 @@ class WattsStrogatzGraph(Resource):
             put('http://localhost:5000/api/Generators/WattsStrogatzGraph', data={'n': n, 'k': k, 'p': p, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
+            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
         try:
@@ -525,8 +547,9 @@ class WattsStrogatzGraph(Resource):
             r['net'] = {'g': g, 'name': 'WSGraph', 'params': {'n': n, 'k': k, 'p': p}}
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
-
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -589,9 +612,10 @@ class Models(Resource):
         """
 
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
         try:
             ml = []
@@ -604,8 +628,10 @@ class Models(Resource):
             for mname in mods:
                 del db[token]['models'][mname]
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource destroyed'}, success
 
 
@@ -657,14 +683,16 @@ class Configure(Resource):
             put('http://localhost:5000/api/Configure', data={'status': json, 'models': 'model1,model2','token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         try:
             status = json.loads(request.form['status'])
         except:
+            db.close()
             return {"Message": "Value Error: No JSON object could be decoded"}, bad_request
 
         try:
@@ -675,8 +703,10 @@ class Configure(Resource):
             for model_name in models:
                 db[token]['models'][model_name].set_initial_status(status)
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {"Message": "Configuration applied"}, success
 
 
@@ -697,9 +727,10 @@ class Threshold(Resource):
             put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         infected = 0.05
@@ -735,8 +766,10 @@ class Threshold(Resource):
                 r['models']['Threshold_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -758,8 +791,9 @@ class IndependentCascades(Resource):
             put('http://localhost:5000/api/IndependentCascades', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         infected = request.form['infected']
@@ -783,8 +817,10 @@ class IndependentCascades(Resource):
                 r['models']['IndependentCascades_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -805,9 +841,10 @@ class SIR(Resource):
             put('http://localhost:5000/api/SIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -833,8 +870,10 @@ class SIR(Resource):
                 r['models']['SIR_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -854,9 +893,10 @@ class SI(Resource):
             put('http://localhost:5000/api/SI', data={'beta': beta, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -881,8 +921,10 @@ class SI(Resource):
                 r['models']['SI_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -903,9 +945,10 @@ class SIS(Resource):
             put('http://localhost:5000/api/SIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -931,8 +974,10 @@ class SIS(Resource):
                 r['models']['SIS_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -954,9 +999,10 @@ class Profile(Resource):
             put('http://localhost:5000/api/Profile', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         profile = 0
@@ -991,8 +1037,10 @@ class Profile(Resource):
                 r['models']['Profile_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1015,9 +1063,10 @@ class ProfileThreshold(Resource):
             put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         threshold = 0
@@ -1065,8 +1114,10 @@ class ProfileThreshold(Resource):
                 r['models']['ProfileThreshold_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1085,8 +1136,9 @@ class Voter(Resource):
             put('http://localhost:5000/api/Voter', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         infected = request.form['infected']
@@ -1110,8 +1162,10 @@ class Voter(Resource):
                 r['models']['VoterModel_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1131,8 +1185,9 @@ class MaJorityRule(Resource):
             put('http://localhost:5000/api/Majority', data={'token': token, 'infected': percentage, 'q': q})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         infected = request.form['infected']
@@ -1142,6 +1197,7 @@ class MaJorityRule(Resource):
         try:
             q = int(request.form['q'])
         except:
+            db.close()
             return {"Message": "Parameter error"}, bad_request
 
         g = db[token]['net']['g']
@@ -1161,8 +1217,10 @@ class MaJorityRule(Resource):
                 r['models']['MajorityRule_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1182,8 +1240,9 @@ class Sznajd(Resource):
             put('http://localhost:5000/api/Sznajd', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         infected = request.form['infected']
@@ -1207,8 +1266,10 @@ class Sznajd(Resource):
                 r['models']['SznajdModel_0'] = model
             db[token] = r
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return {'Message': 'Resource created'}, success
 
 #######################################################################################
@@ -1264,9 +1325,10 @@ class Iteration(Resource):
                         post('http://localhost:5000/api/Iteration', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         ml = []
@@ -1288,8 +1350,10 @@ class Iteration(Resource):
                 db[token] = exp
                 results[model_name] = {'iteration': iteration, 'status': status}
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return results, success
 
 
@@ -1360,9 +1424,10 @@ class IterationBunch(Resource):
                         post('http://localhost:5000/api/IterationBunch', data={'token': token, 'bunch': bunch, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"},bad_request
 
         bunch = int(request.form['bunch'])
@@ -1383,8 +1448,10 @@ class IterationBunch(Resource):
                 exp['models'][model_name] = model
                 db[token] = exp
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return results, success
 
 
@@ -1454,9 +1521,10 @@ class CompleteRun(Resource):
                         post('http://localhost:5000/api/CompleteRun', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         results = {}
@@ -1477,8 +1545,10 @@ class CompleteRun(Resource):
                 exp['models'][model_name] = model
                 db[token] = exp
         except:
+            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
+        db.close()
         return results, success
 
 
@@ -1515,9 +1585,10 @@ class Exploratory(Resource):
                         post('http://localhost:5000/api/Exploratory')
         """
         token = str(request.form['token'])
-        db = get_shelve('c')
+        db = shelve.open("data/db/%s" % token)
 
         if token not in db:
+            db.close()
             return {"Message": "Wrong Token"}, bad_request
 
         if "exploratory" in request.form and request.form["exploratory"] != "":
@@ -1563,9 +1634,11 @@ class Exploratory(Resource):
                     conf['edges'].append({'source': l[0], 'target': l[1], 'weight': float(l[2])})
 
                 db[token]['configuration'] = conf
+                db.close()
                 return {'Message': 'Exploratory configuration loaded'}, success
 
             except:
+                db.close()
                 return {'Message': 'Parameter error'}, bad_request
 
     def get(self):
