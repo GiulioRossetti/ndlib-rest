@@ -36,12 +36,15 @@ class QVoterModel(DiffusionModel):
         # select q random neighbours (with repetitions)
         influence_group_state = [self.status[neighbours[i]]
                             for i in np.random.randint(0, len(neighbours), self.params['q'])]
-        
+
+        delta = {}
         # if all neighbours agree (either on 0 or on 1)
         if sum(influence_group_state) == 0 or sum(influence_group_state) == len(influence_group_state):
             # update status of listener to either on of the neighbours selected
+            delta[listener] = influence_group_state[0]
             self.status[listener] = influence_group_state[0]
         
         self.actual_iteration += 1
         
-        return self.actual_iteration, self.status
+        # return self.actual_iteration, self.status
+        return self.actual_iteration, delta

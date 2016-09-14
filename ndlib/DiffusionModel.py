@@ -196,3 +196,10 @@ class DiffusionModel(object):
             if previous[n] != actual[n]:
                 return False
         return True
+
+    def status_delta(self, actual_status):
+        delta = {}
+        for n, v in self.status.iteritems():
+            if v != actual_status[n]:
+                delta[n] = actual_status[n]
+        return delta

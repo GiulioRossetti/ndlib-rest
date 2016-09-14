@@ -33,10 +33,12 @@ class SISModel(DiffusionModel):
                 if eventp < self.params['lambda']:
                     actual_status[u] = 0
 
+        delta = self.status_delta(actual_status)
         self.status = actual_status
         self.actual_iteration += 1
 
-        return self.actual_iteration, actual_status
+        # return self.actual_iteration, actual_status
+        return self.actual_iteration, delta
 
     def complete_run(self, max_iteration=200):
         system_status = []

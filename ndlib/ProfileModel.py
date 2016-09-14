@@ -34,7 +34,9 @@ class ProfileModel(DiffusionModel):
                 if eventp >= self.params['nodes']['profile'][u]:
                     actual_status[u] = 1
 
+        delta = self.status_delta(actual_status)
         self.status = actual_status
         self.actual_iteration += 1
 
-        return self.actual_iteration, actual_status
+        # return self.actual_iteration, actual_status
+        return self.actual_iteration, delta

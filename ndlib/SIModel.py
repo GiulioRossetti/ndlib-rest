@@ -30,7 +30,9 @@ class SIModel(DiffusionModel):
                 if eventp < self.params['beta'] * infected_neighbors:
                     actual_status[u] = 1
 
+        delta = self.status_delta(actual_status)
         self.status = actual_status
         self.actual_iteration += 1
 
-        return self.actual_iteration, actual_status
+        # return self.actual_iteration, actual_status
+        return self.actual_iteration, delta

@@ -42,9 +42,12 @@ class SznajdModel(DiffusionModel):
                 neighbours = self.graph.successors(speaker1) + self.graph.successors(speaker2)
 
             # update status of listeners
+            delta = {}
             for listener in neighbours:
+                delta[listener] = self.status[speaker1]
                 self.status[listener] = self.status[speaker1]
 
         self.actual_iteration += 1
 
-        return self.actual_iteration, self.status
+        # return self.actual_iteration, actual_status
+        return self.actual_iteration, delta

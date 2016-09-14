@@ -34,7 +34,10 @@ class VoterModel(DiffusionModel):
         speaker = neighbours[np.random.randint(0, len(neighbours))]
 
         # update status of listener
+        delta = {}
+        delta[listener] = self.status[speaker]
         self.status[listener] = self.status[speaker]
         self.actual_iteration += 1
 
-        return self.actual_iteration, self.status
+        # return self.actual_iteration, actual_status
+        return self.actual_iteration, delta

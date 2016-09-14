@@ -33,9 +33,12 @@ class MajorityRuleModel(DiffusionModel):
             majority_vote = 0  # in case of tie, majority_vote remains 1
         
         # update status of nodes in discussion group
+        delta = {}
         for listener in discussion_group:
+            delta[listener] = majority_vote
             self.status[listener] = majority_vote
         
         self.actual_iteration += 1
 
-        return self.actual_iteration, self.status
+        # return self.actual_iteration, self.status
+        return self.actual_iteration, delta

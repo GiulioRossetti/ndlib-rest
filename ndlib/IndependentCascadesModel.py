@@ -31,9 +31,9 @@ class IndependentCascadesModel(DiffusionModel):
 
             actual_status[u] = 2
 
+        delta = self.status_delta(actual_status)
         self.status = actual_status
         self.actual_iteration += 1
 
-        return self.actual_iteration, actual_status
-
-        pass
+        return self.actual_iteration, delta
+        # return self.actual_iteration, actual_status
