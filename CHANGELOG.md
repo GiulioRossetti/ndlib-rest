@@ -10,6 +10,13 @@ All notable changes to this project will be documented in this file.
     - Python client tutorial
     - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
 
+
+## [0.9.0]
+### Added
+- Models
+    - QVoter
+    
+    
 ## [0.8.0]
 ### Updated
 - Experiment Persistence Handling: form unique db to individual dbs

@@ -1168,6 +1168,61 @@ class Voter(Resource):
         db.close()
         return {'Message': 'Resource created'}, success
 
+class QVoter(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/QVoter QVoter
+            @ApiDescription Instantiate the QVoter Model on the network bound to the provided token.
+            @apiVersion 0.9.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number} q Number of neighbours that affect the opinion of an agent
+            @apiName qvoter
+            @apiGroup Models
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/QVoter', data={'token': token, 'q': number,'infected': percentage})
+        """
+        token = str(request.form['token'])
+        db = shelve.open("data/db/%s" % token)
+        if token not in db:
+            db.close()
+            return {"Message": "Wrong Token"}, bad_request
+
+        infected = request.form['infected']
+        if infected == '':
+            infected = 0.05
+
+        try:
+            q = int(request.form['q'])
+        except:
+            db.close()
+            return {"Message": "Parameter error"}, bad_request
+
+        g = db[token]['net']['g']
+        model = vm.QVoterModel(g, {'q': q})
+        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+
+        if 'configuration' in db[token]:
+            model.set_initial_status(db[token]['configuration'])
+
+        try:
+            r = db[token]
+            keys = r['models'].keys()
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
+                r['models']['QVoterModel_%s' % mid] = model
+            else:
+                r['models']['QVoterModel_0'] = model
+            db[token] = r
+        except:
+            db.close()
+            return {'Message': 'Parameter error'}, bad_request
+
+        db.close()
+        return {'Message': 'Resource created'}, success
+
+
 
 class MaJorityRule(Resource):
 
@@ -1684,6 +1739,7 @@ api.add_resource(SIS, '/api/SIS')
 api.add_resource(Profile, '/api/Profile')
 api.add_resource(ProfileThreshold, '/api/ProfileThreshold')
 api.add_resource(Voter, '/api/Voter')
+api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')
 api.add_resource(Sznajd, '/api/Sznajd')
 api.add_resource(Experiment, '/api/Experiment')
