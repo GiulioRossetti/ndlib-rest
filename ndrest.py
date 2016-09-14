@@ -12,6 +12,7 @@ from ndlib import ProfileModel as ac
 from ndlib import ProfileThresholdModel as pt
 from ndlib import IndependentCascadesModel as ic
 from ndlib import VoterModel as vm
+from ndlib import QVoterModel as qvm
 from ndlib import MajorityRuleModel as mrm
 from ndlib import SznajdModel as sm
 import json
@@ -1200,7 +1201,7 @@ class QVoter(Resource):
             return {"Message": "Parameter error"}, bad_request
 
         g = db[token]['net']['g']
-        model = vm.QVoterModel(g, {'q': q})
+        model = qvm.QVoterModel(g, {'q': q})
         model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
         if 'configuration' in db[token]:
