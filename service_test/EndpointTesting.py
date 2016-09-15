@@ -1,5 +1,7 @@
 import unittest
 from requests import put, get, delete, post
+import networkx as nx
+from networkx.readwrite import json_graph
 import json
 import numpy as np
 
@@ -362,6 +364,18 @@ class RESTTest(unittest.TestCase):
         res = delete('%s/api/Experiment' % base, data={'token': token})
         self.assertEqual(res.status_code, 200)
 
+    def test_upload_graph(self):
+        res = get('%s/api/Experiment' % base).json()
+        token = res['token']
+        g = nx.barabasi_albert_graph(100000, 4)
+        js = json_graph.node_link_data(g)
+        jd = json.dumps(js)
+        res = put('http://localhost:5000/api/UploadNetwork', data={'file': str(jd), 'directed': False, 'token': token})
+        self.assertEqual(res.status_code, 200)
+        res = post('%s/api/GetGraph' % base, data={'token': token}).json()
+        self.assertNotEquals(res.keys(), 0)
+        res = delete('%s/api/Experiment' % base, data={'token': token})
+        self.assertEqual(res.status_code, 200)
 
 if __name__ == '__main__':
     unittest.main()

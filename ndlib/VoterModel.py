@@ -21,6 +21,10 @@ class VoterModel(DiffusionModel):
         - the first voter takes the opinion of the peer (listener takes the opinion of speaker)
         """
 
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return 0, self.status
+
         # select a random node
         listener = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 

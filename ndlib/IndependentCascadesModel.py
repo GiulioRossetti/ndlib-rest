@@ -11,6 +11,10 @@ class IndependentCascadesModel(DiffusionModel):
     def iteration(self):
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return self.actual_iteration, actual_status
+
         for u in self.graph.nodes():
             if actual_status[u] != 1:
                 continue

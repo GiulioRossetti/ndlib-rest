@@ -22,6 +22,11 @@ class MajorityRuleModel(DiffusionModel):
         - if tie all agents take opinion +1
         - if not tie, all agents take majority opinion
         """
+
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return self.actual_iteration, self.status
+
         # select q random nodes
         discussion_group = [self.graph.nodes()[i]
                             for i in np.random.randint(0, self.graph.number_of_nodes(), self.params['q'])]

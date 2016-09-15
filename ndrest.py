@@ -24,6 +24,7 @@ __author__ = "Giulio Rossetti"
 __email__ = "giulio.rossetti@gmail.com"
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 20MB limit for uploads
 api = Api(app)
 doc = ApiDoc(app=app)
 CORS(app)
@@ -271,6 +272,97 @@ class Resources(Resource):
     """
 
 
+class UploadNetwork(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/UploadNetwork Upload Network
+            @ApiDescription
+            @apiVersion 0.9.0
+            @apiParam {String}  token   The token.
+            @apiParam {Boolean} directed If the graph is directed
+            @apiParam {json} graph JSON description of the graph attributes.
+            @apiParamExample {json} graph example:
+                {
+                "directed": false,
+                "graph": {
+                    "name": "graph_name"
+                },
+                "links": [
+                    {
+                        "source": 0,
+                        "target": 1
+                    },
+                    {
+                        "source": 0,
+                        "target": 2
+                    },
+                    {
+                        "source": 0,
+                        "target": 3
+                    },
+                    {
+                        "source": 0,
+                        "target": 4
+                    }
+                ],
+                "multigraph": false,
+                "nodes": [
+                    {
+                        "id": 0
+                    },
+                    {
+                        "id": 1
+                    },
+                    {
+                        "id": 2
+                    },
+                    {
+                        "id": 3
+                    },
+                    {
+                        "id": 4
+                    }
+                ]
+            }
+            @apiName upload
+            @apiGroup Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/UploadNetwork', data={'file': JSON, 'directed': False, 'token': token})
+        """
+        token = str(request.form['token'])
+        db = shelve.open("data/db/%s" % token)
+
+        if token not in db:
+            db.close()
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            data = json.loads(request.form['file'])
+        except:
+            db.close()
+            return {"Message": "Value Error: No JSON object could be decoded"}, bad_request
+
+        try:
+            g = None
+            if 'directed' in request.form:
+                directed = bool(request.form['directed'])
+            if directed:
+                g = json_graph.node_link_graph(data, directed=True)
+            else:
+                g = json_graph.node_link_graph(data, directed=False)
+            r = db[token]
+            r['net'] = {'g': g, 'name': 'Uploaded Graph'}
+            db[token] = r
+
+        except:
+            db.close()
+            return {'Message': 'Parameter error'}, bad_request
+
+        db.close()
+        return {"Message": "Configuration applied"}, success
+
+
 class Networks(Resource):
     """
         @apiDefine Networks Networks
@@ -432,7 +524,7 @@ class ERGraph(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{200..100000}} n    The number of nodes.
             @apiParam {Number{0-1}} p    The rewiring probability.
-             @apiParam {Boolean} directed    If the graph should be directed.
+            @apiParam {Boolean} directed    If the graph should be directed.
              If not specified an undirected graph will be generated.
             @apiName ERGraph
             @apiGroup Networks
@@ -546,6 +638,44 @@ class WattsStrogatzGraph(Resource):
 
             r = db[token]
             r['net'] = {'g': g, 'name': 'WSGraph', 'params': {'n': n, 'k': k, 'p': p}}
+            db[token] = r
+        except:
+            db.close()
+            return {'Message': 'Parameter error'}, bad_request
+        db.close()
+        return {'Message': 'Resource created'}, success
+
+
+class CompleteGraph(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/Generators/CompleteGraph Complete Graph
+            @ApiDescription Create a complete graph of size n and bind it to the provided token
+            @apiVersion 0.9.0
+            @apiParam {String} token    The token.
+            @apiParam {Number} n    The number of nodes.
+            @apiName CompleteGraph
+            @apiGroup Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/Generators/CompleteGraph', data={'n': n, 'token': token})
+        """
+        token = str(request.form['token'])
+        db = shelve.open("data/db/%s" % token)
+
+        if token not in db:
+            db.close()
+            return {"Message": "Wrong Token"}, bad_request
+
+        n = int(request.form['n'])
+        if n > max_number_of_nodes:
+            db.close()
+            return {"Message": "Node number out fo range."}, bad_request
+
+        try:
+            g = nx.complete_graph(n)
+            r = db[token]
+            r['net'] = {'g': g, 'name': 'CompleteGraph', 'params': {'n': n}}
             db[token] = r
         except:
             db.close()
@@ -1730,6 +1860,7 @@ api.add_resource(Networks, '/api/Networks')
 api.add_resource(ERGraph, '/api/Generators/ERGraph')
 api.add_resource(BarabasiAlbertGraph, '/api/Generators/BarabasiAlbertGraph')
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
+api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
 api.add_resource(IndependentCascades, '/api/IndependentCascades')
 api.add_resource(Configure, '/api/Configure')
 api.add_resource(Models, '/api/Models')
@@ -1749,6 +1880,7 @@ api.add_resource(Iteration, '/api/Iteration')
 api.add_resource(IterationBunch, '/api/IterationBunch')
 api.add_resource(CompleteRun, '/api/CompleteRun')
 api.add_resource(Exploratory, '/api/Exploratory')
+api.add_resource(UploadNetwork, '/api/UploadNetwork')
 
 if __name__ == '__main__':
     app.run(debug=True)

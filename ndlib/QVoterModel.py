@@ -22,6 +22,10 @@ class QVoterModel(DiffusionModel):
         - select randomly q of its neighbours (speakers)
         - if the q neighbours agree, the listener takes their opinion
         """
+
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return 0, self.status
         
         # select a random listener
         listener = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]

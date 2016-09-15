@@ -21,6 +21,10 @@ class SznajdModel(DiffusionModel):
         - if the two voters agree, their neighbours take their opinion
         """
 
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return 0, self.status
+
         # select a random node
         speaker1 = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 

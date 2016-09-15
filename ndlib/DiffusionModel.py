@@ -151,7 +151,7 @@ class DiffusionModel(object):
         system_status = []
         previous_status = {}
 
-        confidence = 2
+        confidence = 5
 
         while True:
 

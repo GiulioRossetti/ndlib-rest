@@ -16,6 +16,10 @@ class ThresholdModel(DiffusionModel):
         """
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
+        if self.actual_iteration == 0:
+            self.actual_iteration += 1
+            return 0, actual_status
+
         for u in self.graph.nodes():
             if actual_status[u] == 1:
                 continue

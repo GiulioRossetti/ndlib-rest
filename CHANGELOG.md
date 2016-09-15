@@ -3,8 +3,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unrealeased]
 ### Added
-- Networks
-    - Complete Graphs
 - Website
     - REST tutorial
     - Python client tutorial
@@ -13,9 +11,17 @@ All notable changes to this project will be documented in this file.
 
 ## [0.9.0]
 ### Added
+- Networks
+    - Complete Graphs
 - Models
     - QVoter
-    
+- Resources
+    - Upload Graph (JSON)
+- Iterators
+    - Incremental updates
+
+### Changed
+- File upload/download limit (50MB)
     
 ## [0.8.0]
 ### Updated
