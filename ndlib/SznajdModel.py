@@ -24,7 +24,7 @@ class SznajdModel(DiffusionModel):
         if self.actual_iteration == 0:
             self.actual_iteration += 1
             return 0, self.status
-
+        delta = {}
         # select a random node
         speaker1 = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 
@@ -46,7 +46,6 @@ class SznajdModel(DiffusionModel):
                 neighbours = self.graph.successors(speaker1) + self.graph.successors(speaker2)
 
             # update status of listeners
-            delta = {}
             for listener in neighbours:
                 delta[listener] = self.status[speaker1]
                 self.status[listener] = self.status[speaker1]

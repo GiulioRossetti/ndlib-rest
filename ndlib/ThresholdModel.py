@@ -34,7 +34,7 @@ class ThresholdModel(DiffusionModel):
 
             if len(neighbors) > 0:
                 infected_ratio = float(infected)/len(neighbors)
-                if infected_ratio >= self.params['nodes']['threshold'][u]:
+                if infected_ratio >= self.params['nodes']['threshold'][str(u)]:
                     actual_status[u] = 1
 
         delta = self.status_delta(actual_status)

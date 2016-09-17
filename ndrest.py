@@ -1,7 +1,7 @@
 from flask import Flask, request
 import shelve
 import os
-from flask.ext.cors import CORS
+from flask_cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
 from ndlib import ThresholdModel as tm
@@ -16,9 +16,11 @@ from ndlib import QVoterModel as qvm
 from ndlib import MajorityRuleModel as mrm
 from ndlib import SznajdModel as sm
 import json
+import shutil
 import networkx as nx
 from networkx.readwrite import json_graph
 import uuid
+import copy
 
 __author__ = "Giulio Rossetti"
 __email__ = "giulio.rossetti@gmail.com"
@@ -29,7 +31,7 @@ api = Api(app)
 doc = ApiDoc(app=app)
 CORS(app)
 
-max_number_of_nodes = 100000
+max_number_of_nodes = 1000000
 
 # Status code
 success = 200
@@ -77,9 +79,17 @@ class Experiment(Resource):
         """
 
         token = str(uuid.uuid4())
-        db = shelve.open("data/db/%s" % token)
-        db[token] = {'net': None, 'models': {}}
-        db.close()
+        directory = "data/db/%s" % token
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        db_net = shelve.open("%s/net" % directory)
+        db_models = shelve.open("%s/models" % directory)
+        r = db_models
+        r['models'] = {}
+        db_models = r
+        db_net.close()
+        db_models.close()
 
         return {'token': token}, success
 
@@ -96,7 +106,8 @@ class Experiment(Resource):
         """
         token = str(request.form['token'])
         try:
-            os.remove("data/db/%s" % token)
+            shutil.rmtree("data/db/%s" % token)
+            # os.remove("data/db/%s" % token)
         except:
             return {"Message": "Wrong Token"}, bad_request
 
@@ -117,21 +128,35 @@ class ExperimentStatus(Resource):
                         post('http://localhost:5000/api/ExperimentStatus')
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        exp = db[token]
+        result = {}
+        db_net = shelve.open("data/db/%s/net.db" % token)
+        try:
+            exp = db_net
+            net_info = {k: v for k, v in exp['net'].iteritems() if k != 'g'}
+            result['Network'] = net_info
+            db_net.close()
+        except:
+            return {'Message': 'No resources attached to this token'}, not_found
 
         try:
-            net_info = {k: v for k, v in exp['net'].iteritems() if k != 'g'}
-            models = {mname: exp['models'][mname].getinfo() for mname in exp['models']}
-            result = {'Network': net_info, 'Models': models}
-            db.close()
+            db_net = shelve.open("data/db/%s/models.db" % token)
+            exp = db_net['models']
+            model_names = exp.keys()
+            db_net.close()
+
+            models = {}
+            for model in model_names:
+                db_model = shelve.open("data/db/%s/%s.db" % (token, model))
+                exp = db_model
+                models[model] = exp[model].getinfo()
+                db_model.close()
+            result['Models'] = models
             return result
         except:
-            db.close()
             return {'Message': 'No resources attached to this token'}, not_found
 
     def put(self):
@@ -148,31 +173,31 @@ class ExperimentStatus(Resource):
                         put('http://localhost:5000/api/ExperimentStatus', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         ml = []
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
+        db_models = shelve.open("data/db/%s/models.db" % token)
+        exp = db_models['models'].keys()
+        db_models.close()
         try:
-            ml = {c: db[token]['models'][c] for c in ml if c != ''}
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
 
-            mods = ml if len(ml) > 0 else db[token]['models'].keys()
-
-            for mname in mods:
-                m = db[token]['models'][mname]
-                m.reset()
-                m.set_initial_status()
-                del db[token]['models'][mname]
-                db[token]['models'][mname] = m
+            for model_name in models:
+                db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
+                r = db_mod
+                md = copy.copy(r[model_name])  # .copy()
+                md.reset()
+                md.set_initial_status()
+                db_mod[model_name] = md
+                db_mod.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
-        db.close()
         return {'Message': 'Experiment cleaned'}, success
 
 
@@ -234,32 +259,31 @@ class Graph(Resource):
             @apiExample [python request] Example usage:
                         post('http://localhost:5000/api/GetGraph'data={'token': token})
         """
-
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)         
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
+        db_net = shelve.open("data/db/%s/net.db" % token)
         try:
             res = json.load(open("resources/networks.json"))['networks']
             available = True
             for net in res:
-                if net['name'] == db[token]['net']['name']:
+                if net['name'] == db_net['net']['name']:
                     available = net['open_access']
                     break
 
             if available:
-                g = db[token]['net']['g']
+                g = db_net['net']['g']
                 res = json_graph.node_link_data(g)
             else:
-                db.close()
+                db_net.close()
                 return {"Message": "Dataset in read-only access."}, unavailable
         except:
-            db.close()
+            db_net.close()
             return {"Message": "No graph resource assigned to the experiment"}, not_found
 
-        db.close()
+        db_net.close()
         return res, success
 
 
@@ -331,16 +355,13 @@ class UploadNetwork(Resource):
             put('http://localhost:5000/api/UploadNetwork', data={'file': JSON, 'directed': False, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         try:
             data = json.loads(request.form['file'])
         except:
-            db.close()
             return {"Message": "Value Error: No JSON object could be decoded"}, bad_request
 
         try:
@@ -351,15 +372,14 @@ class UploadNetwork(Resource):
                 g = json_graph.node_link_graph(data, directed=True)
             else:
                 g = json_graph.node_link_graph(data, directed=False)
-            r = db[token]
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            r = db_net
             r['net'] = {'g': g, 'name': 'Uploaded Graph'}
-            db[token] = r
-
+            db_net = r
+            db_net.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {"Message": "Configuration applied"}, success
 
 
@@ -414,10 +434,8 @@ class Networks(Resource):
             put('http://localhost:5000/api/Networks', data={'name': 'Last.fm','token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         directed = False
@@ -439,13 +457,13 @@ class Networks(Resource):
                 l = map(int, l.rstrip().split(","))
                 g.add_edge(l[0], l[1])
 
-            r = db[token]
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            r = db_net
             r['net'] = {'g': g, 'name': name}
-            db[token] = r
-            db.close()
+            db_net = r
+            db_net.close()
             return {'Message': 'Network correctly loaded'}, success
         except:
-            db.close()
             return {'Message': "Wrong network name."}, bad_request
 
     def delete(self):
@@ -460,15 +478,17 @@ class Networks(Resource):
                         delete('http://localhost:5000/api/Networks', data={'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)         
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        del db[token]['net']
-        db[token]['net'] = {}
-        db.close()
+        db_net = shelve.open("data/db/%s/net.db" % token)
+        r = db_net
+
+        del r['net']
+        r['net'] = {}
+        db_net = r
+        db_net.close()
         return {'Message': 'Resource deleted'}, success
 
 
@@ -532,17 +552,15 @@ class ERGraph(Resource):
             put('http://localhost:5000/api/Generators/ERGraph', data={'n': n, 'p': p, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)         
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
-            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
+        db_net = shelve.open("data/db/%s/net.db" % token)
         try:
             p = float(request.form['p'])
             directed = False
@@ -551,14 +569,14 @@ class ERGraph(Resource):
 
             g = nx.erdos_renyi_graph(n, p, directed)
 
-            r = db[token]
+            r = db_net
             r['net'] = {'g': g, 'name': 'ERGraph', 'params': {'n': n, 'p': p}}
-            db[token] = r
+            db_net = r
         except:
-            db.close()
+            db_net.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
+        db_net.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -578,28 +596,27 @@ class BarabasiAlbertGraph(Resource):
             put('http://localhost:5000/api/Generators/BarabasiAlbertGraph', data={'n': n, 'm': m, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
-            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
+        db_net = shelve.open("data/db/%s/net.db" % token)
         try:
             m = int(request.form['m'])
             g = nx.barabasi_albert_graph(n, m)
 
-            r = db[token]
+            r = db_net
             r['net'] = {'g': g, 'name': 'BAGraph', 'params': {'n': n, 'm': m}}
-            db[token] = r
+            db_net = r
         except:
-            db.close()
+            db_net.close()
             return {'Message': 'Parameter error'}, bad_request
-        db.close()
+
+        db_net.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -620,29 +637,27 @@ class WattsStrogatzGraph(Resource):
             put('http://localhost:5000/api/Generators/WattsStrogatzGraph', data={'n': n, 'k': k, 'p': p, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
         if n < 200 or n > max_number_of_nodes:
-            db.close()
             return {"Message": "Node number out fo range."}, bad_request
 
+        db_net = shelve.open("data/db/%s/net.db" % token)
         try:
             k = int(request.form['k'])
             p = float(request.form['p'])
             g = nx.watts_strogatz_graph(n, k, p)
-
-            r = db[token]
+            r = db_net
             r['net'] = {'g': g, 'name': 'WSGraph', 'params': {'n': n, 'k': k, 'p': p}}
-            db[token] = r
+            db_net = r
         except:
-            db.close()
+            db_net.close()
             return {'Message': 'Parameter error'}, bad_request
-        db.close()
+
+        db_net.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -661,26 +676,26 @@ class CompleteGraph(Resource):
             put('http://localhost:5000/api/Generators/CompleteGraph', data={'n': n, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n > max_number_of_nodes:
-            db.close()
+        if n < 200 or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
+        db_net = shelve.open("data/db/%s/net.db" % token)
         try:
+            n = int(request.form['n'])
             g = nx.complete_graph(n)
-            r = db[token]
+            r = db_net
             r['net'] = {'g': g, 'name': 'CompleteGraph', 'params': {'n': n}}
-            db[token] = r
+            db_net = r
         except:
-            db.close()
+            db_net.close()
             return {'Message': 'Parameter error'}, bad_request
-        db.close()
+
+        db_net.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -743,26 +758,29 @@ class Models(Resource):
         """
 
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
+
         try:
             ml = []
             if 'models' in request.form:
                 ml = request.form['models'].split(',')
 
-            ml = {c: db[token]['models'][c] for c in ml if c != ''}
-            mods = ml if len(ml) > 0 else db[token]['models'].keys()
+            db_models = shelve.open("data/db/%s/models.db" % token)
+            exp = db_models['models'].keys()
+            db_models['models'] = {}
+            db_models.close()
 
-            for mname in mods:
-                del db[token]['models'][mname]
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
+
+            for model_name in models:
+                os.remove("data/db/%s/%s.db" % (token, model_name))
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource destroyed'}, success
 
 
@@ -814,30 +832,38 @@ class Configure(Resource):
             put('http://localhost:5000/api/Configure', data={'status': json, 'models': 'model1,model2','token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         try:
             status = json.loads(request.form['status'])
         except:
-            db.close()
             return {"Message": "Value Error: No JSON object could be decoded"}, bad_request
 
+        db_models = shelve.open("data/db/%s/models.db" % token)
+        exp = db_models['models'].keys()
+        db_models.close()
+
         try:
-            ml = request.form['models'].split(',')
-            ml = {c: db[token]['models'][c] for c in ml if c != ''}
-            models = ml if len(ml) > 0 else db[token]['models'].keys()
+            ml = []
+            if 'models' in request.form:
+                ml = request.form['models'].split(',')
+
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
 
             for model_name in models:
-                db[token]['models'][model_name].set_initial_status(status)
+                db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
+                r = db_mod
+                md = copy.copy(r[model_name])
+                md.set_initial_status(status)
+                db_mod[model_name] = md
+                db_mod.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {"Message": "Configuration applied"}, success
 
 
@@ -858,10 +884,8 @@ class Threshold(Resource):
             put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         infected = 0.05
@@ -872,7 +896,9 @@ class Threshold(Resource):
         if 'threshold' in request.form and request.form['threshold'] != "":
             threshold = request.form['threshold']
 
-        g = db[token]['net']['g']
+        db_net = shelve.open("data/db/%s/net.db" % token)
+        g = db_net['net']['g']
+        db_net.close()
 
         model = tm.ThresholdModel(g)
         conf = {'model': {'percentage_infected': float(infected)}}
@@ -884,23 +910,34 @@ class Threshold(Resource):
 
         model.set_initial_status(conf)
 
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
+        if os.path.exists("data/db/%s/configuration.db" % token):
+            db_conf = shelve.open("data/db/%s/configuration.db" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
 
+        db_model = shelve.open("data/db/%s/models.db" % token)
         try:
-            r = db[token]
-            keys = r['models'].keys()
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'Threshold' == x.split("_")[0]])
-                r['models']['Threshold_%s' % mid] = model
+                db_name = 'Threshold_%s' % mid
             else:
-                r['models']['Threshold_0'] = model
-            db[token] = r
+                db_name = "Threshold_0"
+
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_threshold
+            r[db_name] = model
+            db_threshold = r
+            db_threshold.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -922,36 +959,50 @@ class IndependentCascades(Resource):
             put('http://localhost:5000/api/IndependentCascades', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        infected = request.form['infected']
-        if infected == '':
-            infected = 0.05
+        infected = 0.05
+        if 'infected' in request.form and request.form['infected'] != "":
+            infected = request.form['infected']
 
-        g = db[token]['net']['g']
+        db_net = shelve.open("data/db/%s/net.db" % token)
+        g = db_net['net']['g']
+        db_net.close()
+
         model = ic.IndependentCascadesModel(g)
-        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+        conf = {'model': {'percentage_infected': float(infected)}}
 
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
+        model.set_initial_status(conf)
 
+        if os.path.exists("data/db/%s/configuration.db" % token):
+            db_conf = shelve.open("data/db/%s/configuration.db" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
+
+        db_model = shelve.open("data/db/%s/models.db" % token)
         try:
-            r = db[token]
-            keys = r['models'].keys()
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'IndependentCascades' == x.split("_")[0]])
-                r['models']['IndependentCascades_%s' % mid] = model
+                db_name = 'IndependentCascades_%s' % mid
             else:
-                r['models']['IndependentCascades_0'] = model
-            db[token] = r
+                db_name = "IndependentCascades_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_ic = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_ic
+            r[db_name] = model
+            db_ic = r
+            db_ic.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -972,10 +1023,8 @@ class SIR(Resource):
             put('http://localhost:5000/api/SIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -985,26 +1034,41 @@ class SIR(Resource):
             if infected == '':
                 infected = 0.05
 
-            g = db[token]['net']['g']
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
             model = sir.SIRModel(g, {'beta': float(beta), 'gamma': float(gamma)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if 'configuration' in db[token]:
-                model.set_initial_status(db[token]['configuration'])
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
 
-            r = db[token]
-            keys = r['models'].keys()
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'SIR' == x.split("_")[0]])
-                r['models']['SIR_%s' % mid] = model
+                db_name = 'SIR_%s' % mid
             else:
-                r['models']['SIR_0'] = model
-            db[token] = r
+                db_name = "SIR_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_sir = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_sir
+            r[db_name] = model
+            db_sir = r
+            db_sir.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1024,10 +1088,8 @@ class SI(Resource):
             put('http://localhost:5000/api/SI', data={'beta': beta, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -1036,26 +1098,41 @@ class SI(Resource):
             if infected == '':
                 infected = 0.05
 
-            g = db[token]['net']['g']
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
             model = si.SIModel(g, {'beta': float(beta)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if 'configuration' in db[token]:
-                model.set_initial_status(db[token]['configuration'])
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
 
-            r = db[token]
-            keys = r['models'].keys()
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'SI' == x.split("_")[0]])
-                r['models']['SI_%s' % mid] = model
+                db_name = 'SI_%s' % mid
             else:
-                r['models']['SI_0'] = model
-            db[token] = r
+                db_name = "SI_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_si = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_si
+            r[db_name] = model
+            db_si = r
+            db_si.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1076,10 +1153,8 @@ class SIS(Resource):
             put('http://localhost:5000/api/SIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         try:
@@ -1089,26 +1164,41 @@ class SIS(Resource):
             if infected == '':
                 infected = 0.05
 
-            g = db[token]['net']['g']
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
             model = sis.SISModel(g, {'beta': float(beta), 'lambda': float(lamb)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if 'configuration' in db[token]:
-                model.set_initial_status(db[token]['configuration'])
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
 
-            r = db[token]
-            keys = r['models'].keys()
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'SIS' == x.split("_")[0]])
-                r['models']['SIS_%s' % mid] = model
+                db_name = 'SIS_%s' % mid
             else:
-                r['models']['SIS_0'] = model
-            db[token] = r
+                db_name = "SIS_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_sis = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_sis
+            r[db_name] = model
+            db_sis = r
+            db_sis.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1130,10 +1220,8 @@ class Profile(Resource):
             put('http://localhost:5000/api/Profile', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         profile = 0
@@ -1145,7 +1233,10 @@ class Profile(Resource):
             if infected == '':
                 infected = 0.05
 
-            g = db[token]['net']['g']
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
             model = ac.ProfileModel(g)
             conf = {'model': {'percentage_infected': float(infected)}}
 
@@ -1153,25 +1244,36 @@ class Profile(Resource):
                 conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
                     conf['nodes']['profile'][str(n)] = float(profile)
-
             model.set_initial_status(conf)
 
-            if 'configuration' in db[token]:
-                model.set_initial_status(db[token]['configuration'])
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
 
-            r = db[token]
-            keys = r['models'].keys()
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'Profile' == x.split("_")[0]])
-                r['models']['Profile_%s' % mid] = model
+                db_name = 'Profile_%s' % mid
             else:
-                r['models']['Profile_0'] = model
-            db[token] = r
+                db_name = "Profile_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_profile = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_profile
+            r[db_name] = model
+            db_profile = r
+            db_profile.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1194,10 +1296,8 @@ class ProfileThreshold(Resource):
             put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         threshold = 0
@@ -1213,7 +1313,10 @@ class ProfileThreshold(Resource):
             if infected == '':
                 infected = 0.05
 
-            g = db[token]['net']['g']
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
             model = pt.ProfileThresholdModel(g)
             conf = {'model': {'percentage_infected': float(infected)}}
 
@@ -1233,22 +1336,34 @@ class ProfileThreshold(Resource):
 
             model.set_initial_status(conf)
 
-            if 'configuration' in db[token]:
-                model.set_initial_status(db[token]['configuration'])
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
 
-            r = db[token]
-            keys = r['models'].keys()
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'ProfileThreshold' == x.split("_")[0]])
-                r['models']['ProfileThreshold_%s' % mid] = model
+                db_name = 'ProfileThreshold_%s' % mid
             else:
-                r['models']['ProfileThreshold_0'] = model
-            db[token] = r
+                db_name = "ProfileThreshold_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_profile_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_profile_threshold
+            r[db_name] = model
+            db_profile_threshold = r
+            db_profile_threshold.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1267,37 +1382,54 @@ class Voter(Resource):
             put('http://localhost:5000/api/Voter', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        infected = request.form['infected']
-        if infected == '':
-            infected = 0.05
-
-        g = db[token]['net']['g']
-        model = vm.VoterModel(g)
-        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
-
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
-
         try:
-            r = db[token]
-            keys = r['models'].keys()
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = vm.VoterModel(g)
+            conf = {'model': {'percentage_infected': float(infected)}}
+
+            model.set_initial_status(conf)
+
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
+
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'VoterModel' == x.split("_")[0]])
-                r['models']['VoterModel_%s' % mid] = model
+                db_name = 'VoterModel_%s' % mid
             else:
-                r['models']['VoterModel_0'] = model
-            db[token] = r
+                db_name = "VoterModel_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_voter = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_voter
+            r[db_name] = model
+            db_voter = r
+            db_voter.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
+
 
 class QVoter(Resource):
 
@@ -1315,44 +1447,54 @@ class QVoter(Resource):
             put('http://localhost:5000/api/QVoter', data={'token': token, 'q': number,'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        infected = request.form['infected']
-        if infected == '':
-            infected = 0.05
-
         try:
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
             q = int(request.form['q'])
-        except:
-            db.close()
-            return {"Message": "Parameter error"}, bad_request
 
-        g = db[token]['net']['g']
-        model = qvm.QVoterModel(g, {'q': q})
-        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
 
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
+            model = qvm.QVoterModel(g, {'q': q})
+            conf = {'model': {'percentage_infected': float(infected)}}
 
-        try:
-            r = db[token]
-            keys = r['models'].keys()
+            model.set_initial_status(conf)
+
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
+
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
-                r['models']['QVoterModel_%s' % mid] = model
+                db_name = 'QVoterModel_%s' % mid
             else:
-                r['models']['QVoterModel_0'] = model
-            db[token] = r
+                db_name = "QVoterModel_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_qvoter = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_qvoter
+            r[db_name] = model
+            db_qvoter = r
+            db_qvoter.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
-
 
 
 class MaJorityRule(Resource):
@@ -1371,42 +1513,53 @@ class MaJorityRule(Resource):
             put('http://localhost:5000/api/Majority', data={'token': token, 'infected': percentage, 'q': q})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        infected = request.form['infected']
-        if infected == '':
-            infected = 0.05
-
         try:
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
             q = int(request.form['q'])
-        except:
-            db.close()
-            return {"Message": "Parameter error"}, bad_request
 
-        g = db[token]['net']['g']
-        model = mrm.MajorityRuleModel(g, {'q': q})
-        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
 
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
+            model = mrm.MajorityRuleModel(g, {'q': q})
+            conf = {'model': {'percentage_infected': float(infected)}}
 
-        try:
-            r = db[token]
-            keys = r['models'].keys()
+            model.set_initial_status(conf)
+
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
+
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'MajorityRule' == x.split("_")[0]])
-                r['models']['MajorityRule_%s' % mid] = model
+                db_name = 'MajorityRule_%s' % mid
             else:
-                r['models']['MajorityRule_0'] = model
-            db[token] = r
+                db_name = "MajorityRule_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_majority_rule = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_majority_rule
+            r[db_name] = model
+            db_majority_rule = r
+            db_majority_rule.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 
@@ -1426,36 +1579,52 @@ class Sznajd(Resource):
             put('http://localhost:5000/api/Sznajd', data={'token': token, 'infected': percentage})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
-        if token not in db:
-            db.close()
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        infected = request.form['infected']
-        if infected == '':
-            infected = 0.05
-
-        g = db[token]['net']['g']
-        model = sm.SznajdModel(g)
-        model.set_initial_status({'model': {'percentage_infected': float(infected)}})
-
-        if 'configuration' in db[token]:
-            model.set_initial_status(db[token]['configuration'])
-
         try:
-            r = db[token]
-            keys = r['models'].keys()
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = shelve.open("data/db/%s/net.db" % token)
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = sm.SznajdModel(g)
+            conf = {'model': {'percentage_infected': float(infected)}}
+
+            model.set_initial_status(conf)
+
+            if os.path.exists("data/db/%s/configuration.db" % token):
+                db_conf = shelve.open("data/db/%s/configuration.db" % token)
+                model.set_initial_status(db_conf['configuration'])
+                db_conf.close()
+
+            db_model = shelve.open("data/db/%s/models.db" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
             if len(keys) > 0:
                 mid = len([int(x.split("_")[1]) for x in keys if 'SznajdModel' == x.split("_")[0]])
-                r['models']['SznajdModel_%s' % mid] = model
+                db_name = 'SznajdModel_%s' % mid
             else:
-                r['models']['SznajdModel_0'] = model
-            db[token] = r
+                db_name = "SznajdModel_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_sznajd = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_sznajd
+            r[db_name] = model
+            db_sznajd = r
+            db_sznajd.close()
+
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return {'Message': 'Resource created'}, success
 
 #######################################################################################
@@ -1510,36 +1679,40 @@ class Iteration(Resource):
             @apiExample [python request] Example usage:
                         post('http://localhost:5000/api/Iteration', data={'token': token, 'models': 'model1,model2'})
         """
-        token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         ml = []
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        exp = db[token]
+        db_models = shelve.open("data/db/%s/models.db" % token)
+        exp = db_models['models'].keys()
+        db_models.close()
         try:
 
-            ml = {c: exp['models'][c] for c in ml if c != ''}
-            models = ml if len(ml) > 0 else exp['models']
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
 
             results = {}
-            for model_name, model in models.iteritems():
+            for model_name in models:
+                db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
+                r = db_mod
+                md = copy.deepcopy(r[model_name])
+                db_mod.close()
+                os.remove("data/db/%s/%s.db" % (token, model_name))
+                iteration, status = md.iteration()
+                db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
+                db_mod[model_name] = md
+                db_mod.close()
 
-                iteration, status = model.iteration()
-                del exp['models'][model_name]
-                exp['models'][model_name] = model
-                db[token] = exp
                 results[model_name] = {'iteration': iteration, 'status': status}
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return results, success
 
 
@@ -1609,35 +1782,39 @@ class IterationBunch(Resource):
             @apiExample [python request] Example usage:
                         post('http://localhost:5000/api/IterationBunch', data={'token': token, 'bunch': bunch, 'models': 'model1,model2'})
         """
-        token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
-            return {"Message": "Wrong Token"},bad_request
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
 
         bunch = int(request.form['bunch'])
-        results = {}
-
-        exp = db[token]
 
         ml = []
         if 'models' in request.form:
             ml = request.form['models'].split(',')
-        try:
-            ml = {c: exp['models'][c] for c in ml if c != ''}
-            models = ml if len(ml) > 0 else exp['models']
 
-            for model_name, model in models.iteritems():
-                results[model_name] = model.iteration_bunch(bunch)
-                del exp['models'][model_name]
-                exp['models'][model_name] = model
-                db[token] = exp
+        db_models = shelve.open("data/db/%s/models.db" % token)
+        exp = db_models['models'].keys()
+        db_models.close()
+        try:
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
+
+            results = {}
+            for model_name in models:
+                db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
+                r = db_mod
+                md = copy.deepcopy(r[model_name])
+                db_mod.close()
+                os.remove("data/db/%s/%s.db" % (token, model_name))
+                results[model_name] = md.iteration_bunch(bunch)
+                db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
+                db_mod[model_name] = md
+                db_mod.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
 
-        db.close()
         return results, success
 
 
@@ -1707,10 +1884,8 @@ class CompleteRun(Resource):
                         post('http://localhost:5000/api/CompleteRun', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         results = {}
@@ -1719,22 +1894,26 @@ class CompleteRun(Resource):
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        exp = db[token]
+        db_models = shelve.open("data/db/%s/models.db" % token)
+        exp = db_models['models'].keys()
+        db_models.close()
         try:
-            ml = {c: exp['models'][c] for c in ml if c != ''}
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
 
-            models = ml if len(ml) > 0 else exp['models']
-
-            for model_name, model in models.iteritems():
-                results[model_name] = model.complete_run()
-                del exp['models'][model_name]
-                exp['models'][model_name] = model
-                db[token] = exp
+            results = {}
+            for model_name in models:
+                db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
+                r = db_mod
+                md = copy.deepcopy(r[model_name])
+                db_mod.close()
+                os.remove("data/db/%s/%s.db" % (token, model_name))
+                results[model_name] = md.complete_run()
+                db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
+                db_mod[model_name] = md
+                db_mod.close()
         except:
-            db.close()
             return {'Message': 'Parameter error'}, bad_request
-
-        db.close()
         return results, success
 
 
@@ -1771,10 +1950,8 @@ class Exploratory(Resource):
                         post('http://localhost:5000/api/Exploratory')
         """
         token = str(request.form['token'])
-        db = shelve.open("data/db/%s" % token)
 
-        if token not in db:
-            db.close()
+        if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         if "exploratory" in request.form and request.form["exploratory"] != "":
@@ -1802,9 +1979,11 @@ class Exploratory(Resource):
                     l = map(int, l.rstrip().split(","))
                     g.add_edge(l[0], l[1])
 
-                r = db[token]
+                db_net = shelve.open("data/db/%s/net.db" % token)
+                r = db_net
                 r['net'] = {'g': g, 'name': net_name}
-                db[token] = r
+                db_net = r
+                db_net.close()
 
                 # Read Configuration
                 conf = {'nodes': {'profile': {}, 'threshold': {}}, 'edges': []}
@@ -1819,12 +1998,12 @@ class Exploratory(Resource):
                     l = l.rstrip().split(",")
                     conf['edges'].append({'source': l[0], 'target': l[1], 'weight': float(l[2])})
 
-                db[token]['configuration'] = conf
-                db.close()
+                db_conf = shelve.open("data/db/%s/configuration" % token)
+                db_conf['configuration'] = conf
+                db_conf.close()
                 return {'Message': 'Exploratory configuration loaded'}, success
 
             except:
-                db.close()
                 return {'Message': 'Parameter error'}, bad_request
 
     def get(self):

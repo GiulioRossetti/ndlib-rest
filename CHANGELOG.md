@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - File upload/download limit (50MB)
+- Experiment Persistency Model
     
 ## [0.8.0]
 ### Updated
