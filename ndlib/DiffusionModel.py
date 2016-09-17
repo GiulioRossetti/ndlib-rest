@@ -65,23 +65,21 @@ class DiffusionModel(object):
 
         # Set additional node information
 
-        for n in self.graph.nodes():
+        if configuration is not None and 'nodes' in configuration and 'threshold' in configuration['nodes']:
+            if len(configuration['nodes']['threshold']) < len(self.graph.nodes()):
+                raise Exception
+            self.params['nodes']['threshold'] = configuration['nodes']['threshold']  # cast to int
+        else:
+            for n in self.graph.nodes():
+                self.params['nodes']['threshold'][str(n)] = np.random.random_sample()
 
-            if configuration is not None and'nodes' in configuration and 'threshold' in configuration['nodes']:
-                if len(configuration['nodes']['threshold']) < len(self.graph.nodes()):
-                    raise Exception
-
-                self.params['nodes']['threshold'][int(n)] = configuration['nodes']['threshold'][str(n)]
-            else:
-                self.params['nodes']['threshold'][int(n)] = np.random.random_sample()
-
-            if configuration is not None and 'nodes' in configuration and 'profile' in configuration['nodes']:
-                if len(configuration['nodes']['profile']) < len(self.graph.nodes()):
-                    raise Exception
-
-                self.params['nodes']['profile'][int(n)] = configuration['nodes']['profile'][str(n)]
-            else:
-                self.params['nodes']['profile'][int(n)] = np.random.random_sample()
+        if configuration is not None and 'nodes' in configuration and 'profile' in configuration['nodes']:
+            if len(configuration['nodes']['profile']) < len(self.graph.nodes()):
+                raise Exception
+            self.params['nodes']['profile'] = configuration['nodes']['profile'] # cast to int
+        else:
+            for n in self.graph.nodes():
+                self.params['nodes']['profile'][str(n)] = np.random.random_sample()
 
         # Set additional edges information
         if configuration is not None and 'edges' in configuration:
