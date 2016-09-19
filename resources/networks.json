@@ -5,8 +5,8 @@
       "name": "Lastfm",
       "size":
       {
-        "nodes": 2566,
-        "edges": 8593
+        "nodes": 75969,
+        "edges": 389639
       },
       "directed": false,
       "exploratory_available": true,
@@ -17,8 +17,8 @@
       "name": "Twitter",
       "size":
       {
-        "nodes": 75969,
-        "edges": 389639
+        "nodes": 2566,
+        "edges": 8593
       },
       "directed": false,
       "exploratory_available": false,

@@ -4,7 +4,9 @@
       "name": "Threshold",
       "uri": "/api/Threshold",
       "params": {
-        "token": "access token"
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes.",
+        "threshold":"A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution."
       }
     },
     {
@@ -13,7 +15,8 @@
       "params": {
         "token": "access token",
         "beta": "Infection rate",
-        "gamma": "Recovery rate"
+        "gamma": "Recovery rate",
+        "infected": "The initial percentage of infected nodes."
       }
     },
     {
@@ -21,7 +24,8 @@
       "uri": "/api/SI",
       "params": {
         "token": "access token",
-        "beta": "Infection rate"
+        "beta": "Infection rate",
+        "infected": "The initial percentage of infected nodes."
       }
     },
     {
@@ -30,24 +34,70 @@
       "params": {
         "token": "access token",
         "beta": "Infection rate",
-        "lambda": "Recovery rate"
+        "lambda": "Recovery rate",
+        "infected": "The initial percentage of infected nodes."
       }
     },
     {
       "name": "Profile",
       "uri": "/api/Profile",
       "params": {
-        "token": "access token"
-      },
-      "note": "Under development"
+        "token": "access token",
+        "profile":  "fixed profile value for all the nodes: if not specified the profile will be assigned using a normal distribution.",
+        "infected": "The initial percentage of infected nodes."
+      }
     },
     {
       "name": "Profile-Threshold",
       "uri": "/api/ProfileThreshold",
       "params": {
-        "token": "access token"
-      },
-      "note": "Under development"
+        "token": "access token",
+        "profile":  "2 fixed profile value for all the nodes: if not specified the profile will be assigned using a normal distribution.",
+        "threshold":"A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution.",
+        "infected": "The initial percentage of infected nodes."
+      }
+    },
+    {
+      "name": "Independent Cascades",
+      "uri": "/api/IndependentCascades",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes."
+      }
+    },
+    {
+      "name": "Voter",
+      "uri": "/api/Voter",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes."
+      }
+    },
+    {
+      "name": "QVoter",
+      "uri": "/api/QVoter",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes.",
+        "q": "Number of neighbours that affect the opinion of an agent"
+      }
+    },
+    {
+      "name": "Majority Rule",
+      "uri": "/api/MajorityRule",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes.",
+        "q": "The group size"
+      }
+    },
+    {
+      "name": "Sznajd",
+      "uri": "/api/Sznajd",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes.",
+      }
     }
   ]
 }
