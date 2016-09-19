@@ -10,6 +10,18 @@
       "name": "BAGraph",
       "uri": "/api/Generators/BarabasiAlbertGraph",
       "params": {"token": "access token", "n": "number of nodes", "m": "number of edges per new node"}
+    },
+    {
+      "name": "WattsStrogatzGraph",
+      "uri": "/api/Generators/WattsStrogatzGraph",
+      "params": {"token": "access token", "n": "number of nodes",
+                "k": "number of node connections",
+                "p": "edge rewiring probability"}
+    },
+    {
+      "name": "CompleteGraph",
+      "uri": "/api/Generators/CompleteGraph",
+      "params": {"token": "access token", "n": "number of nodes"}
     }
   ]
 }
