@@ -96,7 +96,7 @@
       "uri": "/api/Sznajd",
       "params": {
         "token": "access token",
-        "infected": "The initial percentage of infected nodes.",
+        "infected": "The initial percentage of infected nodes."
       }
     }
   ]

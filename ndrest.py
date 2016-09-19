@@ -719,7 +719,7 @@ class CompleteGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n < 200 or n > max_number_of_nodes:
+        if n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         if os.path.exists("data/db/%s/net.db" % token):
@@ -2072,8 +2072,6 @@ class CompleteRun(Resource):
 
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
-
-        results = {}
 
         ml = []
         if 'models' in request.form:

@@ -2,6 +2,9 @@ from requests import put, get, delete, post
 from networkx.readwrite import json_graph
 import json
 
+__author__ = "Giulio Rossetti"
+__email__ = "giulio.rossetti@gmail.com"
+
 
 class NDlibClient(object):
 
@@ -61,6 +64,10 @@ class NDlibClient(object):
         gr = put("%s/api/Generators/WSGraph" % self.base, data={'n': n, 'k': k, 'p': p, 'token': self.token})
         return gr.status_code
 
+    def add_wats_complete_graph(self, n):
+        gr = put("%s/api/Generators/CompleteGraph" % self.base, data={'n': n, 'token': self.token})
+        return gr.status_code
+
     def destroy_graph(self):
         res = delete('%s/api/Networks' % self.base, data={'token': self.token})
         return res.status_code
@@ -91,6 +98,22 @@ class NDlibClient(object):
 
     def add_independent_cascades(self, infected):
         res = put('%s/api/IndependentCascades' % self.base, data={'infected': infected, 'token': self.token})
+        return res.status_code
+
+    def add_voter(self, infected):
+        res = put('%s/api/Voter' % self.base, data={'infected': infected, 'token': self.token})
+        return res.status_code
+
+    def add_qvoter(self, infected, q):
+        res = put('%s/api/QVoter' % self.base, data={'infected': infected, 'q': q, 'token': self.token})
+        return res.status_code
+
+    def add_majority_rule(self, infected, q):
+        res = put('%s/api/MajorityRule' % self.base, data={'infected': infected, 'q': q, 'token': self.token})
+        return res.status_code
+
+    def add_sznajd(self, infected):
+        res = put('%s/api/Sznajd' % self.base, data={'infected': infected, 'token': self.token})
         return res.status_code
 
     def destroy_model(self, models=[]):
@@ -153,4 +176,8 @@ class NDlibClient(object):
 
     def load_exploratory(self, name):
         res = post('%s/api/Exploratory' % self.base, data={'exploratory': name, 'token': self.token})
+        return res.status_code
+
+    def upload_graph(self, directed, graph):
+        res = post('%s/api/UploadNetwork' % self.base, data={'directed': directed, 'graph': graph, 'token': self.token})
         return res.status_code
