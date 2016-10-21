@@ -29,31 +29,28 @@ class JanosThresholdModel(DiffusionModel):
             self.actual_iteration += 1
             return 0, actual_status
 
-        # select a random susceptible node
-        node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
-        while self.status[node] == -1:
-            node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
+        for node in self.graph.nodes():
+            if self.status[node] != -1:
+                xk = (0, 1)
+                pk = (1-self.params['adopter_rate'], self.params['adopter_rate'])
+                probability = stats.rv_discrete(name='probability', values=(xk, pk))
+                number_probability = probability.rvs()
 
-        xk = (0, 1)
-        pk = (1-self.params['adopter_rate'], self.params['adopter_rate'])
-        probability = stats.rv_discrete(name='probability', values=(xk, pk))
-        number_probability = probability.rvs()
-
-        if number_probability == 1:
-            actual_status[node] = 1
-        else:
-            neighbors = self.graph.neighbors(node)
-            if isinstance(self.graph, nx.DiGraph):
-                neighbors = self.graph.predecessors(node)
-
-            infected = 0
-            for v in neighbors:
-                infected += self.status[v]
-
-            if len(neighbors) > 0:
-                infected_ratio = float(infected)/len(neighbors)
-                if infected_ratio >= self.params['nodes']['threshold'][node]:
+                if number_probability == 1:
                     actual_status[node] = 1
+                else:
+                    neighbors = self.graph.neighbors(node)
+                    if isinstance(self.graph, nx.DiGraph):
+                        neighbors = self.graph.predecessors(node)
+
+                    infected = 0
+                    for v in neighbors:
+                        infected += self.status[v]
+
+                    if len(neighbors) > 0:
+                        infected_ratio = float(infected)/len(neighbors)
+                        if infected_ratio >= self.params['nodes']['threshold'][node]:
+                            actual_status[node] = 1
 
         delta = self.status_delta(actual_status)
         self.status = actual_status
