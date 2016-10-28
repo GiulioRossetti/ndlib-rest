@@ -1,0 +1,6 @@
+flask
+flask-cors
+flask_restful
+flask_apidoc
+networkx
+numpy
