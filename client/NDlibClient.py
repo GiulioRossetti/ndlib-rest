@@ -76,6 +76,11 @@ class NDlibClient(object):
         res = put('%s/api/Threshold' % self.base, data={'infected': infected, 'threshold': threshold, 'token': self.token})
         return res.status_code
 
+    def add_kertesz_model(self, infected, threshold=0.1, blocked=0.1, adopter_rate=0.1):
+        res = put('%s/api/KerteszThreshold' % self.base,
+                  data={'infected': infected, 'threshold': threshold, 'token': self.token, 'blocked': blocked, 'adopter_rate': adopter_rate})
+        return res.status_code
+
     def add_profile_model(self, infected, profile=0):
         res = put('%s/api/Profile' % self.base, data={'infected': infected, 'profile': profile, 'token': self.token})
         return res.status_code
