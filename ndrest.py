@@ -15,6 +15,7 @@ from ndlib import VoterModel as vm
 from ndlib import QVoterModel as qvm
 from ndlib import MajorityRuleModel as mrm
 from ndlib import SznajdModel as sm
+from ndlib import KerteszThresholdModel as jt
 import json
 import shutil
 import networkx as nx
@@ -935,7 +936,7 @@ class Threshold(Resource):
             @apiName threshold
             @apiGroup Models
             @apiExample [python request] Example usage:
-            put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage})
+            put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage, 'threshold': threshold})
         """
         token = str(request.form['token'])
 
@@ -1407,7 +1408,7 @@ class ProfileThreshold(Resource):
             @apiName profilethreshold
             @apiGroup Models
             @apiExample [python request] Example usage:
-            put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage})
+            put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage, 'threshold': threshold, 'profile': profile})
         """
         token = str(request.form['token'])
 
@@ -1791,6 +1792,105 @@ class Sznajd(Resource):
 
         return {'Message': 'Resource created'}, success
 
+
+class KerteszThreshold(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/KerteszThreshold    KerteszThreshold
+            @ApiDescription Instantiate a KerteszThreshold Model on the network bound to the provided token.
+            @apiVersion 0.9.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} threshold    A fixed threshold value for all the nodes: if not specified the
+                                                thresholds will be assigned using a normal distribution.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number {0-1}} adopter_rate    The adopter rate. Fixed probability of self-infection per iteration.
+            @apiParam {Number {0-1}} blocked    Percentage of blocked nodes.
+            @apiName threshold
+            @apiGroup Models
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/KerteszThreshold', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
+        """
+        token = str(request.form['token'])
+        print "#####################", request.form['token']
+        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", token
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        infected = 0.05
+        if 'infected' in request.form and request.form['infected'] != "":
+            infected = request.form['infected']
+
+        threshold = 0
+        if 'threshold' in request.form and request.form['threshold'] != "":
+            threshold = request.form['threshold']
+
+        adopter_rate = 0.1
+        if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
+            adopter_rate = request.form['adopter_rate']
+
+        blocked = 0.1
+        if 'blocked' in request.form and request.form['blocked'] != "":
+            blocked = request.form['blocked']
+
+        if os.path.exists("data/db/%s/net.db" % token):
+            db_net = shelve.open("data/db/%s/net.db" % token)
+        else:
+            db_net = shelve.open("data/db/%s/net" % token)
+
+        g = db_net['net']['g']
+        db_net.close()
+
+        model = jt.JanosThresholdModel(g, {'adopter_rate': adopter_rate, 'blocked': blocked})
+
+        conf = {'model': {'percentage_infected': float(infected)}}
+
+        if float(threshold) > 0:
+            conf['nodes'] = {'threshold': {}}
+            for n in g.nodes():
+                conf['nodes']['threshold'][str(n)] = float(threshold)
+
+        model.set_initial_status(conf)
+
+        if os.path.exists("data/db/%s/configuration.db" % token):
+            db_conf = shelve.open("data/db/%s/configuration.db" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
+        elif os.path.exists("data/db/%s/configuration" % token):
+            db_conf = shelve.open("data/db/%s/configuration" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
+
+        if os.path.exists("data/db/%s/models.db" % token):
+            db_model = shelve.open("data/db/%s/models.db" % token)
+        else:
+            db_model = shelve.open("data/db/%s/models" % token)
+        try:
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'KerteszThreshold' == x.split("_")[0]])
+                db_name = 'KerteszThreshold_%s' % mid
+            else:
+                db_name = "KerteszThreshold_0"
+
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_threshold
+            r[db_name] = model
+            db_threshold = r
+            db_threshold.close()
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
 #######################################################################################
 
 class Iterators(Resource):
@@ -1866,21 +1966,30 @@ class Iteration(Resource):
 
             results = {}
             for model_name in models:
+                print "################", model_name
                 if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
                     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
                 else:
                     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
 
                 r = db_mod
+                print "################ HERE"
+                print model_name in r
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
+
+                print "################ HERE 1"
 
                 if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
                     os.remove("data/db/%s/%s.db" % (token, model_name))
                 else:
                     os.remove("data/db/%s/%s" % (token, model_name))
 
+                print "################ 2"
+
                 iteration, status = md.iteration()
+
+                print "################ iteration"
                 db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()
@@ -2239,6 +2348,7 @@ api.add_resource(IndependentCascades, '/api/IndependentCascades')
 api.add_resource(Configure, '/api/Configure')
 api.add_resource(Models, '/api/Models')
 api.add_resource(Threshold, '/api/Threshold')
+api.add_resource(KerteszThreshold, '/api/KerteszThreshold')
 api.add_resource(SIR, '/api/SIR')
 api.add_resource(SI, '/api/SI')
 api.add_resource(SIS, '/api/SIS')
