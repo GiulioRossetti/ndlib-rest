@@ -45,5 +45,4 @@ class MajorityRuleModel(DiffusionModel):
         
         self.actual_iteration += 1
 
-        # return self.actual_iteration, self.status
-        return self.actual_iteration, delta
+        return self.actual_iteration - 1, delta

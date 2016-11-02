@@ -143,6 +143,10 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "Load Threshold: OK"
 
+        res = put('%s/api/KerteszThreshold' % base, data={'infected': 0.1, 'blocked': 0.1, 'adopter_rate': 0.1, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print "Load KerteszThreshold: OK"
+
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
         print "Load Profile: OK"
@@ -156,7 +160,7 @@ class RESTTest(unittest.TestCase):
         print "Load Independent Cascades: OK"
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token5}).json()
-        self.assertEqual(len(res['Models']), 7)
+        self.assertEqual(len(res['Models']), 8)
         print "Display Experiment Resources: OK"
 
         res = delete('%s/api/Experiment' % base, data={'token': token5})
@@ -196,6 +200,11 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "Load Threshold: OK"
 
+        res = put('%s/api/KerteszThreshold' % base,
+                  data={'infected': 0.1, 'blocked': 0.1, 'adopter_rate': 0.1, 'token': token6})
+        self.assertEqual(res.status_code, 200)
+        print "Load KerteszThreshold: OK"
+
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
         print "Load Profile: OK"
@@ -209,11 +218,11 @@ class RESTTest(unittest.TestCase):
         print "Load Independent Cascades: OK"
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token6}).json()
-        self.assertEqual(len(res['Models'].keys()), 7)
+        self.assertEqual(len(res['Models'].keys()), 8)
         print "Display Experiment Resources: OK"
 
         res = post('%s/api/Iteration' % base, data={'token': token6, 'models': ''}).json()
-        self.assertEqual(len(res.keys()), 7)
+        self.assertEqual(len(res.keys()), 8)
         print "Single Iteration: OK"
 
         res = put('%s/api/ExperimentStatus' % base, data={'token': token6})
@@ -221,7 +230,7 @@ class RESTTest(unittest.TestCase):
         print "Experiment Reset: OK"
 
         res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token6}).json()
-        self.assertEqual(len(res.keys()), 7)
+        self.assertEqual(len(res.keys()), 8)
         print "Iteration Bunch: OK"
 
         res = put('%s/api/ExperimentStatus' % base, data={'token': token6})
@@ -229,7 +238,7 @@ class RESTTest(unittest.TestCase):
         print "Experiment Reset: OK"
 
         res = post('%s/api/CompleteRun' % base, data={'token': token6}).json()
-        self.assertEqual(len(res.keys()), 7)
+        self.assertEqual(len(res.keys()), 8)
         print "Complete Run: OK"
 
         res = delete('%s/api/Networks' % base, data={'token': token6})

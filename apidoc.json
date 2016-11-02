@@ -1,6 +1,6 @@
 {
   "name": "(N)etwork (D)iffusion library REST service",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "REST service for the simulation of diffusion models over networks.",
   "title": "NDlib REST",
   "url": "http://127.0.0.1:5000",
@@ -34,6 +34,7 @@
     "sir",
     "sis",
     "threshold",
+    "KerteszThreshold",
     "profile",
     "profilethreshold",
     "indepcascades",

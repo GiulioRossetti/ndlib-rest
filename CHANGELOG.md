@@ -7,7 +7,13 @@ All notable changes to this project will be documented in this file.
     - REST tutorial
     - Python client tutorial
     - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
+- Installation
+    - Docker Setup
 
+## [0.9.1]
+### Added
+- Models
+    - Kertesz Threshold
 
 ## [0.9.0]
 ### Added

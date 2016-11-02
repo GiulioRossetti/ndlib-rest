@@ -38,8 +38,8 @@ class NdlibTest(unittest.TestCase):
 
     def test_janos_model(self):
         g = nx.erdos_renyi_graph(100, 0.1)
-        model = ktm.JanosThresholdModel(g, {'adopter_rate': 0.4, 'blocked': 10})
-        #avg_degree = np.mean(g.graph.degree(g.graph.nodes()).values())
+        model = ktm.JanosThresholdModel(g, {'adopter_rate': 0.4, 'blocked': 0.1})
+        # avg_degree = np.mean(g.graph.degree(g.graph.nodes()).values())
         threshold = 0.2
         # if 0 < threshold <= 1/avg_degree:
         threshold_list = (threshold,)

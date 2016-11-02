@@ -43,5 +43,4 @@ class VoterModel(DiffusionModel):
         self.status[listener] = self.status[speaker]
         self.actual_iteration += 1
 
-        # return self.actual_iteration, actual_status
-        return self.actual_iteration, delta
+        return self.actual_iteration - 1, delta

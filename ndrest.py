@@ -1799,40 +1799,38 @@ class KerteszThreshold(Resource):
         """
             @api {put} /api/KerteszThreshold    KerteszThreshold
             @ApiDescription Instantiate a KerteszThreshold Model on the network bound to the provided token.
-            @apiVersion 0.9.0
+            @apiVersion 0.9.1
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} threshold    A fixed threshold value for all the nodes: if not specified the
                                                 thresholds will be assigned using a normal distribution.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number {0-1}} adopter_rate    The adopter rate. Fixed probability of self-infection per iteration.
             @apiParam {Number {0-1}} blocked    Percentage of blocked nodes.
-            @apiName threshold
+            @apiName KerteszThreshold
             @apiGroup Models
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/KerteszThreshold', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
         """
         token = str(request.form['token'])
-        print "#####################", request.form['token']
-        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", token
 
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
         infected = 0.05
         if 'infected' in request.form and request.form['infected'] != "":
-            infected = request.form['infected']
+            infected = float(request.form['infected'])
 
         threshold = 0
         if 'threshold' in request.form and request.form['threshold'] != "":
-            threshold = request.form['threshold']
+            threshold = float(request.form['threshold'])
 
         adopter_rate = 0.1
         if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
-            adopter_rate = request.form['adopter_rate']
+            adopter_rate = float(request.form['adopter_rate'])
 
         blocked = 0.1
         if 'blocked' in request.form and request.form['blocked'] != "":
-            blocked = request.form['blocked']
+            blocked = float(request.form['blocked'])
 
         if os.path.exists("data/db/%s/net.db" % token):
             db_net = shelve.open("data/db/%s/net.db" % token)
@@ -1966,30 +1964,22 @@ class Iteration(Resource):
 
             results = {}
             for model_name in models:
-                print "################", model_name
                 if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
                     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
                 else:
                     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
 
                 r = db_mod
-                print "################ HERE"
-                print model_name in r
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
-
-                print "################ HERE 1"
 
                 if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
                     os.remove("data/db/%s/%s.db" % (token, model_name))
                 else:
                     os.remove("data/db/%s/%s" % (token, model_name))
 
-                print "################ 2"
-
                 iteration, status = md.iteration()
 
-                print "################ iteration"
                 db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()

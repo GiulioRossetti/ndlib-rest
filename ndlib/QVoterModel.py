@@ -49,6 +49,5 @@ class QVoterModel(DiffusionModel):
             self.status[listener] = influence_group_state[0]
         
         self.actual_iteration += 1
-        
-        # return self.actual_iteration, self.status
-        return self.actual_iteration, delta
+
+        return self.actual_iteration - 1, delta
