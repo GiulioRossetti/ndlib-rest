@@ -38,5 +38,4 @@ class SIModel(DiffusionModel):
         self.status = actual_status
         self.actual_iteration += 1
 
-        # return self.actual_iteration, actual_status
-        return self.actual_iteration, delta
+        return self.actual_iteration - 1, delta

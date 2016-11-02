@@ -6,8 +6,8 @@ from scipy import stats
 __author__ = "Letizia Milli"
 __email__ = "letizia.milli@di.unipi.it"
 
+
 class JanosThresholdModel(DiffusionModel):
-    # avg_degree = 0
 
     def iteration(self):
         """
@@ -28,8 +28,6 @@ class JanosThresholdModel(DiffusionModel):
                 self.status[node] = -1
             self.actual_iteration += 1
             return 0, actual_status
-
-        print "KKKKKKK"
 
         for node in self.graph.nodes():
             if self.status[node] != -1:
@@ -53,11 +51,9 @@ class JanosThresholdModel(DiffusionModel):
                         infected_ratio = float(infected)/len(neighbors)
                         if infected_ratio >= self.params['nodes']['threshold'][str(node)]:
                             actual_status[node] = 1
-        print "KKKKKKK 1"
 
         delta = self.status_delta(actual_status)
         self.status = actual_status
         self.actual_iteration += 1
 
-        # return self.actual_iteration, actual_status
-        return self.actual_iteration, delta
+        return self.actual_iteration-1, delta
