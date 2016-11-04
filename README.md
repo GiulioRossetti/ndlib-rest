@@ -52,7 +52,7 @@ To create the image execute the following command from the local copy of the rep
 ```
 docker build -t [tagname_for_your_image] .
 ```
-The command create a new image with the specified name. Pay attention to the '''.''' a the end of the command.
+The command create a new image with the specified name. Pay attention to the ```.``` a the end of the command.
 
 ```
 docker run -d -i -p 5000:5000 [tagname_for_your_image] 
