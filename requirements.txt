@@ -4,3 +4,4 @@ flask_restful
 flask_apidoc
 networkx
 numpy
+scipy
