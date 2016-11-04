@@ -2357,4 +2357,5 @@ api.add_resource(Exploratory, '/api/Exploratory')
 api.add_resource(UploadNetwork, '/api/UploadNetwork')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
+
