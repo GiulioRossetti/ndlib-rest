@@ -16,6 +16,7 @@ from ndlib import QVoterModel as qvm
 from ndlib import MajorityRuleModel as mrm
 from ndlib import SznajdModel as sm
 from ndlib import KerteszThresholdModel as jt
+from ndlib import CognitiveOpDynModel as cop
 import json
 import shutil
 import networkx as nx
@@ -1878,11 +1879,83 @@ class KerteszThreshold(Resource):
             db_model['models'] = r
             db_model.close()
 
-            db_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
-            r = db_threshold
+            db_thresholdk = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_thresholdk
             r[db_name] = model
-            db_threshold = r
-            db_threshold.close()
+            db_thresholdk = r
+            db_thresholdk.close()
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class CognitiveOpinionDynamic(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/CognitiveOpinionDynamic    CognitiveOpinionDynamic
+            @ApiDescription Instantiate a CognitiveOpinionDynamic Model on the network bound to the provided token.
+            @apiVersion 0.9.1
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} I    External information.
+            @apiName CognitiveOpinionDynamic
+            @apiGroup Models
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/CognitiveOpinionDynamic', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        I = 0.8
+        if 'I' in request.form and request.form['I'] != "":
+            I = float(request.form['I'])
+
+        if os.path.exists("data/db/%s/net.db" % token):
+            db_net = shelve.open("data/db/%s/net.db" % token)
+        else:
+            db_net = shelve.open("data/db/%s/net" % token)
+
+        g = db_net['net']['g']
+        db_net.close()
+
+        model = cop.CognitiveOpDynModel(g, {'I': I})
+        model.set_initial_status()
+
+        if os.path.exists("data/db/%s/configuration.db" % token):
+            db_conf = shelve.open("data/db/%s/configuration.db" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
+        elif os.path.exists("data/db/%s/configuration" % token):
+            db_conf = shelve.open("data/db/%s/configuration" % token)
+            model.set_initial_status(db_conf['configuration'])
+            db_conf.close()
+
+        if os.path.exists("data/db/%s/models.db" % token):
+            db_model = shelve.open("data/db/%s/models.db" % token)
+        else:
+            db_model = shelve.open("data/db/%s/models" % token)
+        try:
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'CognitiveOpinionDynamic' == x.split("_")[0]])
+                db_name = 'CognitiveOpinionDynamic_%s' % mid
+            else:
+                db_name = "CognitiveOpinionDynamic_0"
+
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_cognitiveop = shelve.open("data/db/%s/%s" % (token, db_name))
+            r = db_cognitiveop
+            r[db_name] = model
+            db_cognitiveop = r
+            db_cognitiveop.close()
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2344,6 +2417,7 @@ api.add_resource(SI, '/api/SI')
 api.add_resource(SIS, '/api/SIS')
 api.add_resource(Profile, '/api/Profile')
 api.add_resource(ProfileThreshold, '/api/ProfileThreshold')
+api.add_resource(CognitiveOpinionDynamic, '/api/CognitiveOpinionDynamic')
 api.add_resource(Voter, '/api/Voter')
 api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')

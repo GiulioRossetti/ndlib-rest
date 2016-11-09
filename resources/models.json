@@ -98,6 +98,25 @@
         "token": "access token",
         "infected": "The initial percentage of infected nodes."
       }
+    },
+    {
+      "name": "KerteszThreshold",
+      "uri": "/api/KerteszThreshold",
+      "params": {
+        "token": "access token",
+        "infected": "The initial percentage of infected nodes.",
+        "threshold": "A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution.",
+        "adopter_rate": "The adopter rate. Fixed probability of self-infection per iteration.",
+        "blocked": "Percentage of blocked nodes."
+      }
+    },
+    {
+      "name": "Cognitive Opinion Dynamics",
+      "uri": "/api/CognitiveOpinionDynamic",
+      "params": {
+        "token": "access token",
+        "I": "The external information."
+      }
     }
   ]
 }

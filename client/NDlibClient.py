@@ -121,6 +121,10 @@ class NDlibClient(object):
         res = put('%s/api/Sznajd' % self.base, data={'infected': infected, 'token': self.token})
         return res.status_code
 
+    def add_cognitiveopdyn(self, i):
+        res = put('%s/api/CognitiveOpinionDynamic' % self.base, data={'I': i, 'token': self.token})
+        return res.status_code
+
     def destroy_model(self, models=[]):
         if len(models) == 0:
             models = ''

@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Models
     - Kertesz Threshold
+    - Cognitive Opinion Dynamics 
 - Installation
     - Docker Setup
 
