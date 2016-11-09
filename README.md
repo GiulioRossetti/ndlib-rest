@@ -22,6 +22,7 @@ Python 2.7 required dependencies:
 - flask_apidoc
 - networkx
 - numpy
+- scipy
 - shelve
 
 #### REST service setup
