@@ -80,7 +80,7 @@ class CognitiveOpDynModel(DiffusionModel):
                 R1 = self.params['nodes']['cognitive'][n1][0]
                 actual_status[n1] += (1 - T1) * (actual_status[n2] - actual_status[n1])
                 if R1 == 1:
-                    actual_status[n1] = 0.5 * (1 - actual_status[n1])
+                    actual_status[n1] = 0.5 * (1 + actual_status[n1])
                 if R1 == -1:
                     actual_status[n1] *= 0.5
 
@@ -89,7 +89,7 @@ class CognitiveOpDynModel(DiffusionModel):
                 R2 = self.params['nodes']['cognitive'][n2][0]
                 actual_status[n2] += (1 - T2) * (oldn1 - actual_status[n2])
                 if R2 == 1:
-                    actual_status[n2] = 0.5 * (1 - actual_status[n2])
+                    actual_status[n2] = 0.5 * (1 + actual_status[n2])
                 if R2 == -1:
                     actual_status[n2] *= 0.5
 
