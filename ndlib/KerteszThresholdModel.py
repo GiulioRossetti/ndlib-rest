@@ -17,7 +17,6 @@ class JanosThresholdModel(DiffusionModel):
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
         if self.actual_iteration == 0:
-            # self.avg_degree = np.mean(self.graph.degree(self.graph.nodes()).values())
             number_node_blocked = int(float(self.graph.number_of_nodes()) * float(self.params['blocked']))
 
             i = 0
@@ -26,7 +25,7 @@ class JanosThresholdModel(DiffusionModel):
                 node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 
                 # node not infected
-                if actual_status[node] != 1:
+                if actual_status[node] == 0:
 
                     # node blocked
                     actual_status[node] = -1
