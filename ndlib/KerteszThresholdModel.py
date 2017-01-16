@@ -19,13 +19,20 @@ class JanosThresholdModel(DiffusionModel):
         if self.actual_iteration == 0:
             # self.avg_degree = np.mean(self.graph.degree(self.graph.nodes()).values())
             number_node_blocked = int(float(self.graph.number_of_nodes()) * float(self.params['blocked']))
-            for i in range(0, number_node_blocked + 1):
+
+            i = 0
+            while i <= number_node_blocked:
                 # select a random node
                 node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
-                while self.status[node] == -1:
-                    node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
-                # node blocked
-                self.status[node] = -1
+
+                # node not infected
+                if actual_status[node] != 1:
+
+                    # node blocked
+                    actual_status[node] = -1
+                    self.status[node] = -1
+                    i += 1
+
             self.actual_iteration += 1
             return 0, actual_status
 
