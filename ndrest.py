@@ -48,6 +48,12 @@ unavailable = 451
 not_implemented = 501
 
 
+def load_data(path):
+    db = dumbdbm.open(path)
+    db_net = shelve.Shelf(db)
+    return db_net
+
+
 class Experiment(Resource):
     """
     @apiDefine Experiment Experiment
@@ -87,14 +93,9 @@ class Experiment(Resource):
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        db = dumbdbm.open("%s/net" % directory)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("%s/net" % directory)
+        db_models = load_data("%s/models" % directory)
 
-        db = dumbdbm.open("%s/models" % directory)
-        db_models = shelve.Shelf(db)
-
-        # db_net = shelve.open("%s/net" % directory)
-        # db_models = shelve.open("%s/models" % directory)
         r = db_models
         r['models'] = {}
         db_models = r
@@ -117,7 +118,6 @@ class Experiment(Resource):
         token = str(request.form['token'])
         try:
             shutil.rmtree("data/db/%s" % token)
-            # os.remove("data/db/%s" % token)
         except:
             return {"Message": "Wrong Token"}, bad_request
 
@@ -143,12 +143,7 @@ class ExperimentStatus(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         result = {}
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             exp = db_net
@@ -159,27 +154,16 @@ class ExperimentStatus(Resource):
             return {'Message': 'No resources attached to this token'}, not_found
 
         try:
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_net = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #    db_net = shelve.open("data/db/%s/models" % token)
 
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_net = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
-            exp = db_net['models']
+            exp = db_model['models']
             model_names = exp.keys()
-            db_net.close()
+            db_model.close()
 
             models = {}
             for model in model_names:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model)):
-                #     db_model = shelve.open("data/db/%s/%s.db" % (token, model))
-                # else:
-                #     db_model = shelve.open("data/db/%s/%s" % (token, model))
-
-                db = dumbdbm.open("data/db/%s/%s" % (token, model))
-                db_model = shelve.Shelf(db)
+                db_model = load_data("data/db/%s/%s" % (token, model))
 
                 exp = db_model
                 models[model] = exp[model].getinfo()
@@ -211,13 +195,7 @@ class ExperimentStatus(Resource):
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_models = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_models = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_models = shelve.Shelf(db)
+        db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
         db_models.close()
@@ -226,16 +204,10 @@ class ExperimentStatus(Resource):
             models = ml if len(ml) > 0 else exp
 
             for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
 
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
-
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
-                md = copy.copy(r[model_name])  # .copy()
+                md = copy.deepcopy(r[model_name])
                 md.reset()
                 md.set_initial_status()
                 db_mod[model_name] = md
@@ -308,13 +280,7 @@ class Graph(Resource):
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #    db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             res = json.load(open("resources/networks.json"))['networks']
@@ -423,14 +389,8 @@ class UploadNetwork(Resource):
                 g = json_graph.node_link_graph(data, directed=True)
             else:
                 g = json_graph.node_link_graph(data, directed=False)
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
 
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
-
+            db_net = load_data("data/db/%s/net" % token)
             r = db_net
             r['net'] = {'g': g, 'name': 'Uploaded Graph'}
             db_net = r
@@ -515,14 +475,7 @@ class Networks(Resource):
                 l = map(int, l.rstrip().split(","))
                 g.add_edge(l[0], l[1])
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
-
+            db_net = load_data("data/db/%s/net" % token)
             r = db_net
             r['net'] = {'g': g, 'name': name}
             db_net = r
@@ -547,14 +500,7 @@ class Networks(Resource):
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
-
+        db_net = load_data("data/db/%s/net" % token)
         r = db_net
 
         del r['net']
@@ -632,13 +578,7 @@ class ERGraph(Resource):
         if n < 200 or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             p = float(request.form['p'])
@@ -683,13 +623,7 @@ class BarabasiAlbertGraph(Resource):
         if n < 200 or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             m = int(request.form['m'])
@@ -731,13 +665,7 @@ class WattsStrogatzGraph(Resource):
         if n < 200 or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             k = int(request.form['k'])
@@ -777,13 +705,7 @@ class CompleteGraph(Resource):
         if n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         try:
             n = int(request.form['n'])
@@ -867,13 +789,7 @@ class Models(Resource):
             if 'models' in request.form:
                 ml = request.form['models'].split(',')
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_models = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_models = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_models = shelve.Shelf(db)
+            db_models = load_data("data/db/%s/models" % token)
 
             exp = db_models['models'].keys()
             db_models['models'] = {}
@@ -883,12 +799,7 @@ class Models(Resource):
             models = ml if len(ml) > 0 else exp
 
             for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     os.remove("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                # os.remove("data/db/%s/%s*" % (token, model_name))
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-
 
         except:
             return {'Message': 'Parameter error'}, bad_request
@@ -953,13 +864,7 @@ class Configure(Resource):
         except:
             return {"Message": "Value Error: No JSON object could be decoded"}, bad_request
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_models = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_models = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_models = shelve.Shelf(db)
+        db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
         db_models.close()
@@ -973,16 +878,9 @@ class Configure(Resource):
             models = ml if len(ml) > 0 else exp
 
             for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
-
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
-
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
-                md = copy.copy(r[model_name])
+                md = copy.deepcopy(r[model_name])
                 md.set_initial_status(status)
                 db_mod[model_name] = md
                 db_mod.close()
@@ -1022,13 +920,7 @@ class Threshold(Resource):
         if 'threshold' in request.form and request.form['threshold'] != "":
             threshold = request.form['threshold']
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         g = db_net['net']['g']
         db_net.close()
@@ -1043,29 +935,12 @@ class Threshold(Resource):
 
         model.set_initial_status(conf)
 
-        if os.path.exists("data/db/%s/configuration.db" % token):
-            # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration.db" % token)
-            db_conf = shelve.Shelf(db)
-
-            model.set_initial_status(db_conf['configuration'])
-            db_conf.close()
-        elif os.path.exists("data/db/%s/configuration" % token):
-
-            db = dumbdbm.open("data/db/%s/configuration" % token)
-            db_conf = shelve.Shelf(db)
-
+        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            db_conf = load_data("data/db/%s/configuration" % token)
             model.set_initial_status(db_conf['configuration'])
             db_conf.close()
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_model = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_model = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_model = shelve.Shelf(db)
+        db_model = load_data("data/db/%s/models" % token)
 
         try:
             r = db_model['models']
@@ -1081,10 +956,7 @@ class Threshold(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_threshold = shelve.Shelf(db)
+            db_threshold = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_threshold
             r[db_name] = model
@@ -1122,13 +994,7 @@ class IndependentCascades(Resource):
         if 'infected' in request.form and request.form['infected'] != "":
             infected = request.form['infected']
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         g = db_net['net']['g']
         db_net.close()
@@ -1138,30 +1004,12 @@ class IndependentCascades(Resource):
 
         model.set_initial_status(conf)
 
-        if os.path.exists("data/db/%s/configuration.db" % token):
-            # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration.db" % token)
-            db_conf = shelve.Shelf(db)
-
-            model.set_initial_status(db_conf['configuration'])
-            db_conf.close()
-        elif os.path.exists("data/db/%s/configuration" % token):
-            # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration" % token)
-            db_conf = shelve.Shelf(db)
-
+        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            db_conf = load_data("data/db/%s/configuration" % token)
             model.set_initial_status(db_conf['configuration'])
             db_conf.close()
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_model = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #    db_model = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_model = shelve.Shelf(db)
+        db_model = load_data("data/db/%s/models" % token)
 
         try:
             r = db_model['models']
@@ -1176,10 +1024,7 @@ class IndependentCascades(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_ic = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_ic = shelve.Shelf(db)
+            db_ic = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_ic
             r[db_name] = model
@@ -1219,13 +1064,7 @@ class SIR(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #    db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1233,30 +1072,12 @@ class SIR(Resource):
             model = sir.SIRModel(g, {'beta': float(beta), 'gamma': float(gamma)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1270,10 +1091,7 @@ class SIR(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_sir = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_sir = shelve.Shelf(db)
+            db_sir = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_sir
             r[db_name] = model
@@ -1312,13 +1130,7 @@ class SI(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1326,30 +1138,12 @@ class SI(Resource):
             model = si.SIModel(g, {'beta': float(beta)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1363,10 +1157,7 @@ class SI(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_si = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_si = shelve.Shelf(db)
+            db_si = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_si
             r[db_name] = model
@@ -1407,13 +1198,7 @@ class SIS(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1421,30 +1206,12 @@ class SIS(Resource):
             model = sis.SISModel(g, {'beta': float(beta), 'lambda': float(lamb)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1458,10 +1225,7 @@ class SIS(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_sis = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_sis = shelve.Shelf(db)
+            db_sis = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_sis
             r[db_name] = model
@@ -1505,13 +1269,7 @@ class Profile(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1525,30 +1283,12 @@ class Profile(Resource):
                     conf['nodes']['profile'][str(n)] = float(profile)
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1562,10 +1302,7 @@ class Profile(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_profile = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_profile = shelve.Shelf(db)
+            db_profile = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_profile
             r[db_name] = model
@@ -1614,13 +1351,7 @@ class ProfileThreshold(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1644,29 +1375,12 @@ class ProfileThreshold(Resource):
 
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1680,10 +1394,7 @@ class ProfileThreshold(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_profile_threshold = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_profile_threshold = shelve.Shelf(db)
+            db_profile_threshold = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_profile_threshold
             r[db_name] = model
@@ -1720,13 +1431,7 @@ class Voter(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1736,30 +1441,12 @@ class Voter(Resource):
 
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1773,10 +1460,7 @@ class Voter(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_voter = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_voter = shelve.Shelf(db)
+            db_voter = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_voter
             r[db_name] = model
@@ -1815,13 +1499,7 @@ class QVoter(Resource):
                 infected = 0.05
             q = int(request.form['q'])
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1831,30 +1509,12 @@ class QVoter(Resource):
 
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #    db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1868,10 +1528,7 @@ class QVoter(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_qvoter = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_qvoter = shelve.Shelf(db)
+            db_qvoter = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_qvoter
             r[db_name] = model
@@ -1910,13 +1567,7 @@ class MaJorityRule(Resource):
                 infected = 0.05
             q = int(request.form['q'])
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #    db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -1926,30 +1577,12 @@ class MaJorityRule(Resource):
 
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -1963,10 +1596,7 @@ class MaJorityRule(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_majority_rule = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_majority_rule = shelve.Shelf(db)
+            db_majority_rule = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_majority_rule
             r[db_name] = model
@@ -2004,13 +1634,7 @@ class Sznajd(Resource):
             if infected == '':
                 infected = 0.05
 
-            # if os.path.exists("data/db/%s/net.db" % token):
-            #     db_net = shelve.open("data/db/%s/net.db" % token)
-            # else:
-            #     db_net = shelve.open("data/db/%s/net" % token)
-
-            db = dumbdbm.open("data/db/%s/net" % token)
-            db_net = shelve.Shelf(db)
+            db_net = load_data("data/db/%s/net" % token)
 
             g = db_net['net']['g']
             db_net.close()
@@ -2020,30 +1644,12 @@ class Sznajd(Resource):
 
             model.set_initial_status(conf)
 
-            if os.path.exists("data/db/%s/configuration.db" % token):
-                # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration.db" % token)
-                db_conf = shelve.Shelf(db)
-
-                model.set_initial_status(db_conf['configuration'])
-                db_conf.close()
-            elif os.path.exists("data/db/%s/configuration" % token):
-                # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-                db = dumbdbm.open("data/db/%s/configuration" % token)
-                db_conf = shelve.Shelf(db)
-
+            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
                 model.set_initial_status(db_conf['configuration'])
                 db_conf.close()
 
-            # if os.path.exists("data/db/%s/models.db" % token):
-            #     db_model = shelve.open("data/db/%s/models.db" % token)
-            # else:
-            #     db_model = shelve.open("data/db/%s/models" % token)
-
-            db = dumbdbm.open("data/db/%s/models" % token)
-            db_model = shelve.Shelf(db)
+            db_model = load_data("data/db/%s/models" % token)
 
             r = db_model['models']
             keys = r.keys()
@@ -2057,10 +1663,7 @@ class Sznajd(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_sznajd = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_sznajd = shelve.Shelf(db)
+            db_sznajd = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_sznajd
             r[db_name] = model
@@ -2112,13 +1715,7 @@ class KerteszThreshold(Resource):
         if 'blocked' in request.form and request.form['blocked'] != "":
             blocked = float(request.form['blocked'])
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         g = db_net['net']['g']
         db_net.close()
@@ -2134,31 +1731,12 @@ class KerteszThreshold(Resource):
 
         model.set_initial_status(conf)
 
-        if os.path.exists("data/db/%s/configuration.db" % token):
-            # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration.db" % token)
-            db_conf = shelve.Shelf(db)
-
-            model.set_initial_status(db_conf['configuration'])
-            db_conf.close()
-        elif os.path.exists("data/db/%s/configuration" % token):
-            # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration" % token)
-            db_conf = shelve.Shelf(db)
-
-
+        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            db_conf = load_data("data/db/%s/configuration" % token)
             model.set_initial_status(db_conf['configuration'])
             db_conf.close()
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_model = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_model = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_model = shelve.Shelf(db)
+        db_model = load_data("data/db/%s/models" % token)
 
         try:
             r = db_model['models']
@@ -2174,10 +1752,7 @@ class KerteszThreshold(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_thresholdk = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_thresholdk = shelve.Shelf(db)
+            db_thresholdk = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_thresholdk
             r[db_name] = model
@@ -2212,13 +1787,7 @@ class CognitiveOpinionDynamic(Resource):
         if 'I' in request.form and request.form['I'] != "":
             I = float(request.form['I'])
 
-        # if os.path.exists("data/db/%s/net.db" % token):
-        #     db_net = shelve.open("data/db/%s/net.db" % token)
-        # else:
-        #     db_net = shelve.open("data/db/%s/net" % token)
-
-        db = dumbdbm.open("data/db/%s/net" % token)
-        db_net = shelve.Shelf(db)
+        db_net = load_data("data/db/%s/net" % token)
 
         g = db_net['net']['g']
         db_net.close()
@@ -2226,30 +1795,12 @@ class CognitiveOpinionDynamic(Resource):
         model = cop.CognitiveOpDynModel(g, {'I': I})
         model.set_initial_status()
 
-        if os.path.exists("data/db/%s/configuration.db" % token):
-            # db_conf = shelve.open("data/db/%s/configuration.db" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration.db" % token)
-            db_conf = shelve.Shelf(db)
-
-            model.set_initial_status(db_conf['configuration'])
-            db_conf.close()
-        elif os.path.exists("data/db/%s/configuration" % token):
-            # db_conf = shelve.open("data/db/%s/configuration" % token)
-
-            db = dumbdbm.open("data/db/%s/configuration" % token)
-            db_conf = shelve.Shelf(db)
-
+        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            db_conf = load_data("data/db/%s/configuration" % token)
             model.set_initial_status(db_conf['configuration'])
             db_conf.close()
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_model = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_model = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_model = shelve.Shelf(db)
+        db_model = load_data("data/db/%s/models" % token)
 
         try:
             r = db_model['models']
@@ -2265,10 +1816,7 @@ class CognitiveOpinionDynamic(Resource):
             db_model['models'] = r
             db_model.close()
 
-            # db_cognitiveop = shelve.open("data/db/%s/%s" % (token, db_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, db_name))
-            db_cognitiveop = shelve.Shelf(db)
+            db_cognitiveop = load_data("data/db/%s/%s" % (token, db_name))
 
             r = db_cognitiveop
             r[db_name] = model
@@ -2342,55 +1890,34 @@ class Iteration(Resource):
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_models = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_models = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_models = shelve.Shelf(db)
+        db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
         db_models.close()
-        # try:
+        try:
 
-        ml = [c for c in ml if c != '']
-        models = ml if len(ml) > 0 else exp
+            ml = [c for c in ml if c != '']
+            models = ml if len(ml) > 0 else exp
 
-        results = {}
-        for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
+            results = {}
+            for model_name in models:
 
-            db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-            db_mod = shelve.Shelf(db)
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
+                r = db_mod
+                md = copy.deepcopy(r[model_name])
+                db_mod.close()
 
-            r = db_mod
-            md = copy.deepcopy(r[model_name])
-            db_mod.close()
+                map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
 
-            map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
+                iteration, status = md.iteration()
 
-            # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-            #     os.remove("data/db/%s/%s.db" % (token, model_name))
-            # else:
-            #    os.remove("data/db/%s/%s" % (token, model_name))
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
+                db_mod[model_name] = md
+                db_mod.close()
 
-            iteration, status = md.iteration()
-
-            # db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
-
-            db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-            db_mod = shelve.Shelf(db)
-
-            db_mod[model_name] = md
-            db_mod.close()
-
-            results[model_name] = {'iteration': iteration, 'status': status}
-        # except:
-        #    return {'Message': 'Parameter error'}, bad_request
+                results[model_name] = {'iteration': iteration, 'status': status}
+        except:
+           return {'Message': 'Parameter error'}, bad_request
 
         return results, success
 
@@ -2473,13 +2000,7 @@ class IterationBunch(Resource):
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_models = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_models = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_models = shelve.Shelf(db)
+        db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
         db_models.close()
@@ -2489,34 +2010,20 @@ class IterationBunch(Resource):
 
             results = {}
             for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
-
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
 
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     os.remove("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     os.remove("data/db/%s/%s*" % (token, model_name))
 
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-
                 results[model_name] = md.iteration_bunch(bunch)
-                # db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
 
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
-
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()
         except:
-            return {'Message': 'Parameter error'}, bad_request
+           return {'Message': 'Parameter error'}, bad_request
 
         return results, success
 
@@ -2595,13 +2102,7 @@ class CompleteRun(Resource):
         if 'models' in request.form:
             ml = request.form['models'].split(',')
 
-        # if os.path.exists("data/db/%s/models.db" % token):
-        #     db_models = shelve.open("data/db/%s/models.db" % token)
-        # else:
-        #     db_models = shelve.open("data/db/%s/models" % token)
-
-        db = dumbdbm.open("data/db/%s/models" % token)
-        db_models = shelve.Shelf(db)
+        db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
         db_models.close()
@@ -2611,30 +2112,17 @@ class CompleteRun(Resource):
 
             results = {}
             for model_name in models:
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     db_mod = shelve.open("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
-
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
 
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
-                # if os.path.exists("data/db/%s/%s.db" % (token, model_name)):
-                #     os.remove("data/db/%s/%s.db" % (token, model_name))
-                # else:
-                #     os.remove("data/db/%s/%s*" % (token, model_name))
 
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
 
                 results[model_name] = md.complete_run()
-                # db_mod = shelve.open("data/db/%s/%s" % (token, model_name))
 
-                db = dumbdbm.open("data/db/%s/%s" % (token, model_name))
-                db_mod = shelve.Shelf(db)
-
+                db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()
         except:
@@ -2704,13 +2192,7 @@ class Exploratory(Resource):
                     l = map(int, l.rstrip().split(","))
                     g.add_edge(l[0], l[1])
 
-                # if os.path.exists("data/db/%s/net.db" % token):
-                #     db_net = shelve.open("data/db/%s/net.db" % token)
-                # else:
-                #     db_net = shelve.open("data/db/%s/net" % token)
-
-                db = dumbdbm.open("data/db/%s/net" % token)
-                db_net = shelve.Shelf(db)
+                db_net = load_data("data/db/%s/net" % token)
 
                 r = db_net
                 r['net'] = {'g': g, 'name': net_name}
@@ -2730,7 +2212,7 @@ class Exploratory(Resource):
                     l = l.rstrip().split(",")
                     conf['edges'].append({'source': l[0], 'target': l[1], 'weight': float(l[2])})
 
-                db_conf = shelve.open("data/db/%s/configuration" % token)
+                db_conf = load_data("data/db/%s/configuration" % token)
                 db_conf['configuration'] = conf
                 db_conf.close()
                 return {'Message': 'Exploratory configuration loaded'}, success
