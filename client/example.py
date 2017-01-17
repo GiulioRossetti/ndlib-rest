@@ -8,7 +8,7 @@ e = NDlibClient("http://127.0.0.1:5000")
 e.create_experiment()
 
 e.add_barabasi_albert_graph(4000, 10)
-e.add_cognitiveopdyn(0.8)  # 0.1, threshold=0.1, blocked=0.1, adopter_rate=0.1)
+e.add_kertesz_model(0.1, threshold=0.1, blocked=0.2, adopter_rate=0.1)
 for it in xrange(0, 20):
     ex = e.get_iteration()
     for m in ex:
