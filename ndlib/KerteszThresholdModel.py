@@ -20,7 +20,7 @@ class JanosThresholdModel(DiffusionModel):
             number_node_blocked = int(float(self.graph.number_of_nodes()) * float(self.params['blocked']))
 
             i = 0
-            while i <= number_node_blocked:
+            while i < number_node_blocked:
                 # select a random node
                 node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 
