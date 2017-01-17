@@ -108,7 +108,7 @@ class DiffusionModel(object):
                 self.params['model']['percentage_infected'] = percentage_infected
 
         number_of_initial_infected = len(self.graph.nodes()) * percentage_infected
-        sampled_nodes = np.random.choice(self.status.keys(), number_of_initial_infected, replace=False)
+        sampled_nodes = np.random.choice(self.status.keys(), int(number_of_initial_infected), replace=False)
 
         for k in sampled_nodes:
             self.status[k] = 1
