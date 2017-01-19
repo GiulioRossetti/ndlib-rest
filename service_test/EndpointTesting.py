@@ -9,7 +9,7 @@ __author__ = 'rossetti'
 __license__ = "GPL"
 __email__ = "giulio.rossetti@gmail.com"
 
-base = "http://127.0.0.1:5000"
+base = "http://localhost:5000"
 
 
 class RESTTest(unittest.TestCase):
@@ -367,6 +367,7 @@ class RESTTest(unittest.TestCase):
         print "Load Independent Cascades: OK"
 
         res = post('%s/api/Iteration' % base, data={'token': token, 'models': ''}).json()
+        print res
         self.assertEqual(len(res.keys()), 4)
         print "Single Iteration: OK"
 

@@ -7,16 +7,17 @@ __email__ = "giulio.rossetti@gmail.com"
 e = NDlibClient("http://127.0.0.1:5000")
 e.create_experiment()
 
-e.add_barabasi_albert_graph(4000, 10)
+# e.add_barabasi_albert_graph(4000, 10)
+e.add_planted_lpartition_graph(30, 35, 0.7, 0.2)
 e.add_kertesz_model(0.1, threshold=0.1, blocked=0.2, adopter_rate=0.1)
 
-res = e.get_iteration_bunch(10)
-for i in res:
-    print i
-    for k in res[i]:
-        print k
+# res = e.get_iteration_bunch(10)
+# for i in res:
+#     print i
+#     for k in res[i]:
+#        print k
 
-exit()
+# exit()
 
 for it in xrange(0, 10):
     ex = e.get_iteration()

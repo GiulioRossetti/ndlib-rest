@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
     - Python client tutorial
     - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
 
+## [0.9.2]
+### Added
+- Networks
+	- Planted l-partition
+	
+### Changed
+- Experiment Persistency Model (refactoring)
+
 ## [0.9.1]
 ### Added
 - Models

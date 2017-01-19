@@ -60,6 +60,11 @@ class NDlibClient(object):
         gr = put("%s/api/Generators/ERGraph" % self.base, data={'n': n, 'p': p, 'directed': directed, 'token': self.token})
         return gr.status_code
 
+    def add_planted_lpartition_graph(self, l, k, pin, pout, directed=False):
+        gr = put("%s/api/Generators/PlantedPartition" % self.base, data={'l': l, 'k': k, 'pin': pin, 'pout': pout,
+                                                                         'directed': directed, 'token': self.token})
+        return gr.status_code
+
     def add_wats_strogatz_graph(self, n, k, p):
         gr = put("%s/api/Generators/WSGraph" % self.base, data={'n': n, 'k': k, 'p': p, 'token': self.token})
         return gr.status_code
