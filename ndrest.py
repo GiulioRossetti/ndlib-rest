@@ -3,6 +3,7 @@ import shelve
 import dumbdbm
 import glob
 import os
+from utils import generators
 from flask_cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
@@ -590,6 +591,58 @@ class ERGraph(Resource):
 
             r = db_net
             r['net'] = {'g': g, 'name': 'ERGraph', 'params': {'n': n, 'p': p}}
+            db_net = r
+        except:
+            db_net.close()
+            return {'Message': 'Parameter error'}, bad_request
+
+        db_net.close()
+        return {'Message': 'Resource created'}, success
+
+
+class PlantedPartition(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/Generators/PlantedPartition Planted l-partitions
+            @ApiDescription Create a Planted l-Parition graph compliant to the specified parameters and bind it to the provided token
+            @apiVersion 0.9.2
+            @apiParam {String} token    The token.
+            @apiParam {Number} l    The number of groups.
+            @apiParam {Number} k    The number of nodes per group.
+            @apiParam {Number} pin  The probability of connecting vertices within a group.
+            @apiParam {Number} pout    The probability of connecting vertices between a group.
+            @apiParam {Boolean} directed    If the graph should be directed.
+             If not specified an undirected graph will be generated.
+            @apiName PlantedPartition
+            @apiGroup Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/Generators/PlantedPartition', data={'l': l, 'k': k, 'pin': pin, 'pout': pout, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        k = int(request.form['k'])
+        l = int(request.form['l'])
+        if k*l < 200 or k*l > max_number_of_nodes:
+            return {"Message": "Node number out fo range."}, bad_request
+
+        db_net = load_data("data/db/%s/net" % token)
+
+        try:
+            pin = float(request.form['pin'])
+            pout = float(request.form['pout'])
+
+            directed = False
+            if 'directed' in request.form:
+                directed = bool(request.form['directed'])
+
+            g = generators.planted_partition_graph(l, k, pin, pout, directed=directed)
+
+            r = db_net
+            r['net'] = {'g': g, 'name': 'PlantedPartition', 'params': {'l': l, 'k': k, 'pin': pin, 'pout': pout}}
             db_net = r
         except:
             db_net.close()
@@ -2251,6 +2304,7 @@ api.add_resource(Graph, '/api/GetGraph')
 api.add_resource(Generators, '/api/Generators')
 api.add_resource(Networks, '/api/Networks')
 api.add_resource(ERGraph, '/api/Generators/ERGraph')
+api.add_resource(PlantedPartition, '/api/Generators/PlantedPartition')
 api.add_resource(BarabasiAlbertGraph, '/api/Generators/BarabasiAlbertGraph')
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
 api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
