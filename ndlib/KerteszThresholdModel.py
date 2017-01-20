@@ -17,20 +17,21 @@ class JanosThresholdModel(DiffusionModel):
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
         if self.actual_iteration == 0:
-            number_node_blocked = int(float(self.graph.number_of_nodes()) * float(self.params['blocked']))
+            if min(actual_status.values()) == 0:
+                number_node_blocked = int(float(self.graph.number_of_nodes()) * float(self.params['blocked']))
 
-            i = 0
-            while i < number_node_blocked:
-                # select a random node
-                node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
+                i = 0
+                while i < number_node_blocked:
+                    # select a random node
+                    node = self.graph.nodes()[np.random.randint(0, self.graph.number_of_nodes())]
 
-                # node not infected
-                if actual_status[node] == 0:
+                    # node not infected
+                    if actual_status[node] == 0:
 
-                    # node blocked
-                    actual_status[node] = -1
-                    self.status[node] = -1
-                    i += 1
+                        # node blocked
+                        actual_status[node] = -1
+                        self.status[node] = -1
+                        i += 1
 
             self.actual_iteration += 1
             return 0, actual_status
