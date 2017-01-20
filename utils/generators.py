@@ -110,12 +110,11 @@ def random_partition_graph(sizes, p_in, p_out, seed=None, directed=False):
         raise nx.NetworkXError("p_out must be in [0,1]")
 
     if directed:
-        G = nx.DiGraph()
+        g = nx.DiGraph()
     else:
-        G = nx.Graph()
-    G.graph['partition'] = []
+        g = nx.Graph()
     n = sum(sizes)
-    G.add_nodes_from(range(n))
+    g.add_nodes_from(range(n))
     # start with len(sizes) groups of gnp random graphs with parameter p_in
     # graphs are unioned together with node labels starting at
     # 0, sizes[0], sizes[0]+sizes[1], ...
@@ -126,26 +125,25 @@ def random_partition_graph(sizes, p_in, p_out, seed=None, directed=False):
         edges = ((u+start, v+start)
                  for u, v in
                  nx.fast_gnp_random_graph(n, p_in, directed=directed).edges())
-        G.add_edges_from(edges)
+        g.add_edges_from(edges)
         next_group.update(dict.fromkeys(range(start, start+n), start+n))
-        G.graph['partition'].append(set(range(start, start+n)))
         group += 1
         start += n
 
     # handle edge cases
     if p_out == 0:
-        return G
+        return g
     if p_out == 1:
         for n in next_group:
-            targets = range(next_group[n], len(G))
-            G.add_edges_from(zip([n]*len(targets), targets))
+            targets = range(next_group[n], len(g))
+            g.add_edges_from(zip([n]*len(targets), targets))
             if directed:
-                G.add_edges_from(zip(targets, [n]*len(targets)))
-        return G
+                g.add_edges_from(zip(targets, [n]*len(targets)))
+        return g
     # connect each node in group randomly with the nodes not in group
     # use geometric method like fast_gnp_random_graph()
     lp = math.log(1.0 - p_out)
-    n = len(G)
+    n = len(g)
     if directed:
         for u in range(n):
             v = 0
@@ -156,7 +154,7 @@ def random_partition_graph(sizes, p_in, p_out, seed=None, directed=False):
                 if next_group.get(v, n) == next_group[u]:
                     v = next_group[u]
                 if v < n:
-                    G.add_edge(u, v)
+                    g.add_edge(u, v)
                     v += 1
     else:
         for u in range(n-1):
@@ -165,6 +163,6 @@ def random_partition_graph(sizes, p_in, p_out, seed=None, directed=False):
                 lr = math.log(1.0 - random.random())
                 v += int(lr/lp)
                 if v < n:
-                    G.add_edge(u, v)
+                    g.add_edge(u, v)
                     v += 1
-    return G
+    return g

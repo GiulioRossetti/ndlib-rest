@@ -125,18 +125,24 @@ class DiffusionModel(object):
             if 'infected_nodes' in configuration['model']:
                 self.params['model']['infected_nodes'] = configuration['model']['infected_nodes']
                 for node in self.params['model']['infected_nodes']:
-                    self.status[node] = 1
+                    self.status[int(node)] = 1
                 self.initial_status = self.status
-                return
 
             elif 'percentage_infected' in configuration['model']:
                 percentage_infected = configuration['model']['percentage_infected']
 
-        for k in self.status:
-            rnd = np.random.random_sample()
-            if rnd <= percentage_infected:
-                self.status[k] = 1
-        self.initial_status = self.status
+            if 'blocked' in configuration['model']:
+                for node in configuration['model']['blocked']:
+                    self.status[int(node)] = -1
+                self.initial_status = self.status
+
+        if 1 not in set(self.initial_status.values()):
+            subs = {n: s for n, s in self.initial_status.iteritems() if s != -1}
+            for k in subs:
+                rnd = np.random.random_sample()
+                if rnd <= percentage_infected:
+                    self.status[int(k)] = 1
+            self.initial_status = self.status
 
     def iteration_bunch(self, bunch_size):
         system_status = []

@@ -144,8 +144,7 @@ class NDlibClient(object):
             models = ''
         else:
             models = ','.join(models)
-
-        res = put('%s/api/Configure' % self.base, data={'status': configuration, 'models': models, 'token': self.token})
+        res = put('%s/api/Configure' % self.base, data={'status': json.dumps(configuration), 'models': models, 'token': self.token})
         return res.status_code
 
     def get_iteration(self, models=[]):
@@ -193,5 +192,5 @@ class NDlibClient(object):
         return res.status_code
 
     def upload_graph(self, directed, graph):
-        res = post('%s/api/UploadNetwork' % self.base, data={'directed': directed, 'graph': graph, 'token': self.token})
+        res = post('%s/api/UploadNetwork' % self.base, data={'directed': directed, 'graph': json.dumps(graph), 'token': self.token})
         return res.status_code

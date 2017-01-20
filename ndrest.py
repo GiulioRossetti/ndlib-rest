@@ -284,19 +284,19 @@ class Graph(Resource):
         db_net = load_data("data/db/%s/net" % token)
 
         try:
-            res = json.load(open("resources/networks.json"))['networks']
-            available = True
-            for net in res:
-                if net['name'] == db_net['net']['name']:
-                    available = net['open_access']
-                    break
+            # res = json.load(open("resources/networks.json"))['networks']
+            # available = True
+            # for net in res:
+            #     if net['name'] == db_net['net']['name']:
+            #         available = net['open_access']
+            #         break
 
-            if available:
-                g = db_net['net']['g']
-                res = json_graph.node_link_data(g)
-            else:
-                db_net.close()
-                return {"Message": "Dataset in read-only access."}, unavailable
+            # if available:
+            g = db_net['net']['g']
+            res = json_graph.node_link_data(g)
+            #else:
+            #    db_net.close()
+            #    return {"Message": "Dataset in read-only access."}, unavailable
         except:
             db_net.close()
             return {"Message": "No graph resource assigned to the experiment"}, not_found
@@ -921,7 +921,6 @@ class Configure(Resource):
 
         exp = db_models['models'].keys()
         db_models.close()
-
         try:
             ml = []
             if 'models' in request.form:
@@ -934,7 +933,7 @@ class Configure(Resource):
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
-                md.set_initial_status(status)
+                md.change_initial_status(status)
                 db_mod[model_name] = md
                 db_mod.close()
 
@@ -2228,11 +2227,6 @@ class Exploratory(Resource):
                 net_name = request.form["exploratory"].split("_")[0]
 
                 directed = False
-                nets = json.load(open("resources/networks.json"))['networks']
-                for net in nets:
-                    if net["name"] == net_name:
-                        directed = net["directed"]
-                        break
 
                 g = None
                 if directed:
@@ -2252,22 +2246,44 @@ class Exploratory(Resource):
                 db_net = r
                 db_net.close()
 
+                conf = {}
+
                 # Read Configuration
-                conf = {'nodes': {'profile': {}, 'threshold': {}}, 'edges': []}
-                f = open("%s/nodes.csv" % base_path)
-                for l in f:
-                    l = l.rstrip().split(",")
-                    conf['nodes']['threshold'][l[0]] = float(l[1])
-                    conf['nodes']['profile'][l[0]] = float(l[2])
+                if os.path.exists("%s/nodes.csv" % base_path):
+                    conf = {'nodes': {'profile': {}, 'threshold': {}}, 'edges': []}
+                    f = open("%s/nodes.csv" % base_path)
+                    for l in f:
+                        l = l.rstrip().split(",")
+                        conf['nodes']['threshold'][int(l[0])] = float(l[1])
+                        conf['nodes']['profile'][int(l[0])] = float(l[2])
 
-                f = open("%s/edges.csv" % base_path)
-                for l in f:
-                    l = l.rstrip().split(",")
-                    conf['edges'].append({'source': l[0], 'target': l[1], 'weight': float(l[2])})
+                if os.path.exists("%s/nodes_initial_status.csv" % base_path):
+                    conf['model'] = {}
+                    f = open("%s/nodes_initial_status.csv" % base_path)
+                    for l in f:
+                        l = l.rstrip().split(",")
+                        node = int(l[0])
+                        nstatus = int(l[1])
+                        if nstatus == 1:
+                            if 'infected_nodes' not in conf['model']:
+                                conf['model']['infected_nodes'] = {}
+                            conf['model']['infected_nodes'][node] = nstatus
+                        if nstatus == -1:
+                            if 'blocked' not in conf['model']:
+                                conf['model']['blocked'] = {}
+                            conf['model']['blocked'][node] = nstatus
 
-                db_conf = load_data("data/db/%s/configuration" % token)
-                db_conf['configuration'] = conf
-                db_conf.close()
+                if os.path.exists("%s/edges.csv" % base_path):
+                    f = open("%s/edges.csv" % base_path)
+                    for l in f:
+                        l = l.rstrip().split(",")
+                        conf['edges'].append({'source': int(l[0]), 'target': int(l[1]), 'weight': float(l[2])})
+
+                if len(conf) > 0:
+                    db_conf = load_data("data/db/%s/configuration" % token)
+                    db_conf['configuration'] = conf
+                    db_conf.close()
+
                 return {'Message': 'Exploratory configuration loaded'}, success
 
             except:
