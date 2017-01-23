@@ -987,9 +987,9 @@ class Threshold(Resource):
 
         model.set_initial_status(conf)
 
-        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.set_initial_status(db_conf['configuration'])
+            model.change_initial_status(db_conf['configuration'])
             db_conf.close()
 
         db_model = load_data("data/db/%s/models" % token)
@@ -1056,9 +1056,9 @@ class IndependentCascades(Resource):
 
         model.set_initial_status(conf)
 
-        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.set_initial_status(db_conf['configuration'])
+            model.change_initial_status(db_conf['configuration'])
             db_conf.close()
 
         db_model = load_data("data/db/%s/models" % token)
@@ -1124,9 +1124,9 @@ class SIR(Resource):
             model = sir.SIRModel(g, {'beta': float(beta), 'gamma': float(gamma)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1190,9 +1190,9 @@ class SI(Resource):
             model = si.SIModel(g, {'beta': float(beta)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1258,9 +1258,9 @@ class SIS(Resource):
             model = sis.SISModel(g, {'beta': float(beta), 'lambda': float(lamb)})
             model.set_initial_status({'model': {'percentage_infected': float(infected)}})
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1335,9 +1335,9 @@ class Profile(Resource):
                     conf['nodes']['profile'][str(n)] = float(profile)
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1427,9 +1427,9 @@ class ProfileThreshold(Resource):
 
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1493,9 +1493,9 @@ class Voter(Resource):
 
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1561,9 +1561,9 @@ class QVoter(Resource):
 
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1629,9 +1629,9 @@ class MaJorityRule(Resource):
 
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1696,9 +1696,9 @@ class Sznajd(Resource):
 
             model.set_initial_status(conf)
 
-            if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.set_initial_status(db_conf['configuration'])
+                model.change_initial_status(db_conf['configuration'])
                 db_conf.close()
 
             db_model = load_data("data/db/%s/models" % token)
@@ -1783,9 +1783,9 @@ class KerteszThreshold(Resource):
 
         model.set_initial_status(conf)
 
-        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.set_initial_status(db_conf['configuration'])
+            model.change_initial_status(db_conf['configuration'])
             db_conf.close()
 
         db_model = load_data("data/db/%s/models" % token)
@@ -1847,9 +1847,9 @@ class CognitiveOpinionDynamic(Resource):
         model = cop.CognitiveOpDynModel(g, {'I': I})
         model.set_initial_status()
 
-        if len(glob.glob("data/db/%s/configuration" % token)) > 0:
+        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.set_initial_status(db_conf['configuration'])
+            model.change_initial_status(db_conf['configuration'])
             db_conf.close()
 
         db_model = load_data("data/db/%s/models" % token)
@@ -2236,7 +2236,7 @@ class Exploratory(Resource):
 
                 f = open("data/networks/%s.csv" % net_name)
                 for l in f:
-                    l = map(int, l.rstrip().split(","))
+                    l = map(int, l.rstrip().split(",")[:2])
                     g.add_edge(l[0], l[1])
 
                 db_net = load_data("data/db/%s/net" % token)
@@ -2278,6 +2278,8 @@ class Exploratory(Resource):
                     for l in f:
                         l = l.rstrip().split(",")
                         conf['edges'].append({'source': int(l[0]), 'target': int(l[1]), 'weight': float(l[2])})
+
+                print conf
 
                 if len(conf) > 0:
                     db_conf = load_data("data/db/%s/configuration" % token)
