@@ -56,6 +56,11 @@ class NDlibClient(object):
         res = put("%s/api/Generators/BarabasiAlbertGraph" % self.base, data={'n': n, 'm': m, 'token': self.token})
         return res.status_code
 
+    def add_clustered_barabasi_albert_graph(self, n, m, p):
+        res = put("%s/api/Generators/ClusteredBarabasiAlbertGraph" % self.base, data={'n': n, 'm': m, 'p': p,
+                                                                                      'token': self.token})
+        return res.status_code
+
     def add_erdos_renyi_graph(self, n, p, directed=False):
         gr = put("%s/api/Generators/ERGraph" % self.base, data={'n': n, 'p': p, 'directed': directed, 'token': self.token})
         return gr.status_code
