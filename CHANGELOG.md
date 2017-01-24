@@ -16,6 +16,8 @@ All notable changes to this project will be documented in this file.
 - Exploratories
 	- ToyCore: local (community) outbreak 
 	- ToyPeri: global outbreak
+	- ClusteredBA_top: Kertesz Threshold test (10%-high degree nodes blocked)
+	- ClusteredBA_bottom: Kertesz Threshold test (10%-low degree nodes blocked)
 	
 ### Changed
 - Experiment Persistency Model (refactoring)

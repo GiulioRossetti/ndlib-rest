@@ -15,10 +15,16 @@
       "description": "Initial status of nodes, community outbreak"
     },
     {
-      "name": "ToyPeri_Com",
-      "network": "ToyPeri",
-      "node_initial_status": ["infected"],
-      "description": "Initial status of nodes, global outbreak"
-    }
+      "name": "ClusteredBA_top",
+      "network": "ClusteredBA",
+      "node_initial_status": ["blocked"],
+      "description": "Initial status of the  10%-top degree nodes is set to blocked (Kertesz Threshold)"
+    },
+    {
+      "name": "ClusteredBA_bottom",
+      "network": "ClusteredBA",
+      "node_initial_status": ["blocked"],
+      "description": "Initial status of the 10%-bottom degree nodes is set to blocked (Kertesz Threshold)"
+    },
   ]
 }
