@@ -12,7 +12,13 @@
       "name": "ToyCore_Com",
       "network": "ToyCore",
       "node_initial_status": ["infected"],
-      "description": "Initial status of nodes, community outbreak"
+      "description": "Initial status of nodes, community outbreak (Threshold model)"
+    },
+    {
+      "name": "ToyPeri_Com",
+      "network": "ToyPeri",
+      "node_initial_status": ["infected"],
+      "description": "Initial status of nodes, global outbreak (Threshold model)"
     },
     {
       "name": "ClusteredBA_top",
@@ -26,5 +32,10 @@
       "node_initial_status": ["blocked"],
       "description": "Initial status of the 10%-bottom degree nodes is set to blocked (Kertesz Threshold)"
     },
+    {
+      "name": "CogOp_1",
+      "network": "CogOp",
+      "description": "Network having powerlaw degree distribution with exponent b=1.6 (Cognitive Opinion Dynamic)"
+    }
   ]
 }
