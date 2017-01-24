@@ -25,6 +25,7 @@
     "CompleteGraph",
     "ERGraph",
     "BAGraph",
+    "CBAGraph",
     "WSGraph",
     "PlantedPartition",
     "loadgraph",

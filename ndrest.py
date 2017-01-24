@@ -693,6 +693,49 @@ class BarabasiAlbertGraph(Resource):
         return {'Message': 'Resource created'}, success
 
 
+class ClusteredBarabasiAlbertGraph(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/Generators/ClusteredBarabasiAlbertGraph Clustered-Barabasi-Albert
+            @ApiDescription Create a CBA graph compliant to the specified parameters and bind it to the provided token
+            @apiVersion 0.9.2
+            @apiParam {String} token    The token.
+            @apiParam {Number{200..100000}} n    The number of nodes.
+            @apiParam {Number{1..}} m    The number of edges attached to each new node.
+            @apiParam {Number{0-1}} p   Probability of adding a triangle after adding a random edge
+            @apiName CBAGraph
+            @apiGroup Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/Generators/ClusteredBarabasiAlbertGraph', data={'n': n, 'm': m, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        n = int(request.form['n'])
+        if n < 200 or n > max_number_of_nodes:
+            return {"Message": "Node number out fo range."}, bad_request
+
+        db_net = load_data("data/db/%s/net" % token)
+
+        try:
+            m = int(request.form['m'])
+            p = float(request.form['p'])
+            g = nx.powerlaw_cluster_graph(n, m, p)
+
+            r = db_net
+            r['net'] = {'g': g, 'name': 'CBAGraph', 'params': {'n': n, 'm': m, 'p': p}}
+            db_net = r
+        except:
+            db_net.close()
+            return {'Message': 'Parameter error'}, bad_request
+
+        db_net.close()
+        return {'Message': 'Resource created'}, success
+
+
 class WattsStrogatzGraph(Resource):
 
     def put(self):
@@ -2324,6 +2367,7 @@ api.add_resource(Networks, '/api/Networks')
 api.add_resource(ERGraph, '/api/Generators/ERGraph')
 api.add_resource(PlantedPartition, '/api/Generators/PlantedPartition')
 api.add_resource(BarabasiAlbertGraph, '/api/Generators/BarabasiAlbertGraph')
+api.add_resource(ClusteredBarabasiAlbertGraph, '/api/Generators/ClusteredBarabasiAlbertGraph')
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
 api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
 api.add_resource(IndependentCascades, '/api/IndependentCascades')

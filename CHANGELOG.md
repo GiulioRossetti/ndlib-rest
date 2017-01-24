@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Networks
 	- Planted l-partition
+	- Clustered Barabàsi-Albert
+- Exploratories
+	- ToyCore: local (community) outbreak 
+	- ToyPeri: global outbreak
 	
 ### Changed
 - Experiment Persistency Model (refactoring)
