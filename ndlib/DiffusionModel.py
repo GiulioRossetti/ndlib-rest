@@ -144,7 +144,7 @@ class DiffusionModel(object):
                     self.status[int(k)] = 1
             self.initial_status = self.status
 
-    def clean_initial_status(self, valid_status):
+    def clean_initial_status(self, valid_status=None):
         for n, s in self.status.iteritems():
             if s not in valid_status:
                 self.status[n] = 0
