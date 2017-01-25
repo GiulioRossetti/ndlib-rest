@@ -15,6 +15,8 @@ class SIModel(DiffusionModel):
         """
 
         """
+        self.clean_initial_status([0, 1])
+
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
         if self.actual_iteration == 0:

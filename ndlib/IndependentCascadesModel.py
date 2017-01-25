@@ -9,6 +9,7 @@ __email__ = "giulio.rossetti@gmail.com"
 class IndependentCascadesModel(DiffusionModel):
 
     def iteration(self):
+        self.clean_initial_status([0, 1, 2])
         actual_status = {node: nstatus for node, nstatus in self.status.iteritems()}
 
         if self.actual_iteration == 0:

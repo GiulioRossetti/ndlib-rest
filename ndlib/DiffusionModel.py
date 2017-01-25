@@ -144,6 +144,11 @@ class DiffusionModel(object):
                     self.status[int(k)] = 1
             self.initial_status = self.status
 
+    def clean_initial_status(self, valid_status):
+        for n, s in self.status.iteritems():
+            if s not in valid_status:
+                self.status[n] = 0
+
     def iteration_bunch(self, bunch_size):
         system_status = []
         for it in xrange(0, bunch_size):
