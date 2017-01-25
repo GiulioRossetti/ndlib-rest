@@ -1868,6 +1868,16 @@ class CognitiveOpinionDynamic(Resource):
             @apiVersion 0.9.1
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} I    External information.
+            @apiParam {Number{0-1}} T_range_min Minimum of the range of initial values for node parameter T.
+            @apiParam {Number{0-1}} T_range_max Maximum of the range of initial values for node parameter T. If T_range_min>T_range_max they are swapped;
+            @apiParam {Number{0-1}} B_range_min Minimum of the range of initial values for node parameter B;
+            @apiParam {Number{0-1}} B_range_max Maximum of the range of initial values for node parameter B. If B_range_min>B_range_max they are swapped;
+            @apiParam {Number{0-1}} R_fraction_negative Fraction of individuals having the node parameter R=-1;
+            @apiParam {Number{0-1}} R_fraction_neutral  Fraction of individuals having the node parameter R=0;
+            @apiParam {Number{0-1}} R_fraction_positive Fraction of individuals having the node parameter R=1. The following relation should hold: R_fraction_negative+R_fraction_neutral+R_fraction_positive=1. To achieve this, the fractions selected will be normalised to sum 1.
+
+
+
             @apiName CognitiveOpinionDynamic
             @apiGroup Models
             @apiExample [python request] Example usage:
@@ -1878,16 +1888,47 @@ class CognitiveOpinionDynamic(Resource):
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
-        I = 0.8
+        I = 0.15
+        T_range_min, T_range_max = 0, 1
+        B_range_min, B_range_max = 0, 1
+        R_fraction_negative, R_fraction_neutral, R_fraction_positive = 1/3.0, 1/3.0, 1/3.0
+
         if 'I' in request.form and request.form['I'] != "":
             I = float(request.form['I'])
+
+        if 'T_range_min' in request.form and request.form['T_range_min'] != "":
+            T_range_min = float(request.form['T_range_min'])
+
+        if 'T_range_max' in request.form and request.form['T_range_max'] != "":
+            T_range_max = float(request.form['T_range_max'])
+
+        if 'B_range_min' in request.form and request.form['B_range_min'] != "":
+            B_range_min = float(request.form['B_range_min'])
+
+        if 'B_range_max' in request.form and request.form['B_range_max'] != "":
+            B_range_max = float(request.form['B_range_max'])
+
+        if 'R_fraction_negative' in request.form and request.form['R_fraction_negative'] != "":
+            R_fraction_negative = float(request.form['R_fraction_negative'])
+
+        if 'R_fraction_neutral' in request.form and request.form['R_fraction_neutral'] != "":
+            R_fraction_neutral = float(request.form['R_fraction_neutral'])
+
+        if 'R_fraction_positive' in request.form and request.form['R_fraction_positive'] != "":
+            R_fraction_positive = float(request.form['R_fraction_positive'])
 
         db_net = load_data("data/db/%s/net" % token)
 
         g = db_net['net']['g']
         db_net.close()
 
-        model = cop.CognitiveOpDynModel(g, {'I': I})
+        model = cop.CognitiveOpDynModel(g, {'I': I,
+                                            'B_range_min': B_range_min, 'B_range_max': B_range_max,
+                                            'T_range_min': T_range_min, 'T_range_max': T_range_max,
+                                            'R_fraction_negative': R_fraction_negative,
+                                            'R_fraction_neutral': R_fraction_neutral,
+                                            'R_fraction_positive': R_fraction_positive}
+                                        )
         model.set_initial_status()
 
         if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
@@ -2247,7 +2288,7 @@ class Exploratory(Resource):
 
     def post(self):
         """
-            @api {post} /api/Exploratory Get Configuration
+            @api {post} /api/Exploratory Load Exploratory
             @ApiDescription Load the configuration data for a specific exploratory.
             @apiVersion 0.6.0
             @apiName loadexploratory

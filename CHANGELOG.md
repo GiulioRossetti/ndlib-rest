@@ -20,8 +20,14 @@ All notable changes to this project will be documented in this file.
 	- ClusteredBA_bottom: Kertesz Threshold test (10%-low degree nodes blocked)
 	- CogOp: network having powerlaw degree distribution with exponent b=1.6
 	
+### Updated
+- Tools
+   - Python REST client (support for the new models, networks and exploratories)
+
 ### Changed
 - Experiment Persistency Model (refactoring)
+- Models
+	- Cognitive Opinion Dynamics (internal status parametrization)
 
 ## [0.9.1]
 ### Added

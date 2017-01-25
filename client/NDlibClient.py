@@ -7,7 +7,6 @@ __email__ = "giulio.rossetti@gmail.com"
 
 
 class NDlibClient(object):
-
     def __init__(self, service_url):
         self.token = ""
         self.base = service_url
@@ -62,7 +61,8 @@ class NDlibClient(object):
         return res.status_code
 
     def add_erdos_renyi_graph(self, n, p, directed=False):
-        gr = put("%s/api/Generators/ERGraph" % self.base, data={'n': n, 'p': p, 'directed': directed, 'token': self.token})
+        gr = put("%s/api/Generators/ERGraph" % self.base,
+                 data={'n': n, 'p': p, 'directed': directed, 'token': self.token})
         return gr.status_code
 
     def add_planted_lpartition_graph(self, l, k, pin, pout, directed=False):
@@ -83,12 +83,14 @@ class NDlibClient(object):
         return res.status_code
 
     def add_threshold_model(self, infected, threshold=0):
-        res = put('%s/api/Threshold' % self.base, data={'infected': infected, 'threshold': threshold, 'token': self.token})
+        res = put('%s/api/Threshold' % self.base,
+                  data={'infected': infected, 'threshold': threshold, 'token': self.token})
         return res.status_code
 
     def add_kertesz_model(self, infected, threshold=0.1, blocked=0.1, adopter_rate=0.1):
         res = put('%s/api/KerteszThreshold' % self.base,
-                  data={'infected': infected, 'threshold': threshold, 'token': self.token, 'blocked': blocked, 'adopter_rate': adopter_rate})
+                  data={'infected': infected, 'threshold': threshold, 'token': self.token, 'blocked': blocked,
+                        'adopter_rate': adopter_rate})
         return res.status_code
 
     def add_profile_model(self, infected, profile=0):
@@ -96,7 +98,8 @@ class NDlibClient(object):
         return res.status_code
 
     def add_profile_threshold_model(self, infected, threshold=0, profile=0):
-        res = put('%s/api/ProfileThreshold' % self.base, data={'infected': infected, 'threshold': threshold, 'profile': profile, 'token': self.token})
+        res = put('%s/api/ProfileThreshold' % self.base,
+                  data={'infected': infected, 'threshold': threshold, 'profile': profile, 'token': self.token})
         return res.status_code
 
     def add_SI(self, infected, beta):
@@ -104,11 +107,13 @@ class NDlibClient(object):
         return res.status_code
 
     def add_SIS(self, infected, beta, lbd):
-        res = put('%s/api/SIS' % self.base, data={'infected': infected, 'beta': beta, 'lambda': lbd, 'token': self.token})
+        res = put('%s/api/SIS' % self.base,
+                  data={'infected': infected, 'beta': beta, 'lambda': lbd, 'token': self.token})
         return res.status_code
 
     def add_SIR(self, infected, beta, gamma):
-        res = put('%s/api/SIR' % self.base, data={'infected': infected, 'beta': beta, 'gamma': gamma, 'token': self.token})
+        res = put('%s/api/SIR' % self.base,
+                  data={'infected': infected, 'beta': beta, 'gamma': gamma, 'token': self.token})
         return res.status_code
 
     def add_independent_cascades(self, infected):
@@ -131,8 +136,17 @@ class NDlibClient(object):
         res = put('%s/api/Sznajd' % self.base, data={'infected': infected, 'token': self.token})
         return res.status_code
 
-    def add_cognitiveopdyn(self, i):
-        res = put('%s/api/CognitiveOpinionDynamic' % self.base, data={'I': i, 'token': self.token})
+    def add_cognitiveopdyn(self, i, B_range_min, B_range_max, T_range_min, T_range_max, R_fraction_negative,
+                           R_fraction_neutral, R_fraction_positive):
+
+        res = put('%s/api/CognitiveOpinionDynamic' % self.base,
+                  data={'I': i, 'B_range_min': B_range_min, 'B_range_max': B_range_max,
+                        'T_range_min': T_range_min,
+                        'T_range_max': T_range_max,
+                        'R_fraction_negative': R_fraction_negative,
+                        'R_fraction_neutral': R_fraction_neutral,
+                        'R_fraction_positive': R_fraction_positive,
+                        'token': self.token})
         return res.status_code
 
     def destroy_model(self, models=[]):
@@ -141,7 +155,7 @@ class NDlibClient(object):
         else:
             models = ','.join(models)
 
-        res = delete('%s/api/Models' % self.base, data={'models': models , 'token': self.token})
+        res = delete('%s/api/Models' % self.base, data={'models': models, 'token': self.token})
         return res.status_code
 
     def set_advanced_configuration(self, configuration, models=[]):
@@ -149,7 +163,8 @@ class NDlibClient(object):
             models = ''
         else:
             models = ','.join(models)
-        res = put('%s/api/Configure' % self.base, data={'status': json.dumps(configuration), 'models': models, 'token': self.token})
+        res = put('%s/api/Configure' % self.base,
+                  data={'status': json.dumps(configuration), 'models': models, 'token': self.token})
         return res.status_code
 
     def get_iteration(self, models=[]):
@@ -167,7 +182,8 @@ class NDlibClient(object):
         else:
             models = ','.join(models)
 
-        res = post('%s/api/IterationBunch' % self.base, data={'bunch': bunch, 'models': models, 'token': self.token}).json()
+        res = post('%s/api/IterationBunch' % self.base,
+                   data={'bunch': bunch, 'models': models, 'token': self.token}).json()
         return res
 
     def get_complete_run(self, models=[]):
@@ -197,5 +213,6 @@ class NDlibClient(object):
         return res.status_code
 
     def upload_graph(self, directed, graph):
-        res = post('%s/api/UploadNetwork' % self.base, data={'directed': directed, 'graph': json.dumps(graph), 'token': self.token})
+        res = post('%s/api/UploadNetwork' % self.base,
+                   data={'directed': directed, 'graph': json.dumps(graph), 'token': self.token})
         return res.status_code
