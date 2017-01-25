@@ -21,6 +21,8 @@ class SznajdModel(DiffusionModel):
         - if the two voters agree, their neighbours take their opinion
         """
 
+        self.clean_initial_status([0, 1])
+
         if self.actual_iteration == 0:
             self.actual_iteration += 1
             return 0, self.status

@@ -28,16 +28,17 @@ print "ClusteredBA_top"
 e.create_experiment()
 x = e.load_exploratory("ClusteredBA_top")
 e.add_kertesz_model(0.1, threshold=0.1, blocked=0.1, adopter_rate=0.1)
+e.add_threshold_model(0.1, threshold=0.16)
 tot = 0
 for it in xrange(0, 10):
     ex = e.get_iteration()
     for m in ex:
         blocked = [v for v, k in ex[m]['status'].iteritems() if k == -1]
         if it == 0:
-            print blocked
+            print m, blocked
         else:
             tot += sum(ex[m]['status'].values())
-            print tot
+            print m, tot
 
 e.destroy_experiment()
 

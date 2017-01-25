@@ -22,6 +22,7 @@ class QVoterModel(DiffusionModel):
         - select randomly q of its neighbours (speakers)
         - if the q neighbours agree, the listener takes their opinion
         """
+        self.clean_initial_status([0, 1])
 
         if self.actual_iteration == 0:
             self.actual_iteration += 1

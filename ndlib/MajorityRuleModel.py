@@ -22,6 +22,7 @@ class MajorityRuleModel(DiffusionModel):
         - if tie all agents take opinion +1
         - if not tie, all agents take majority opinion
         """
+        self.clean_initial_status([0, 1])
 
         if self.actual_iteration == 0:
             self.actual_iteration += 1

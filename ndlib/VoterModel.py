@@ -21,6 +21,8 @@ class VoterModel(DiffusionModel):
         - the first voter takes the opinion of the peer (listener takes the opinion of speaker)
         """
 
+        self.clean_initial_status([0, 1])
+
         if self.actual_iteration == 0:
             self.actual_iteration += 1
             return 0, self.status
