@@ -17,8 +17,6 @@ for it in xrange(0, 50):
 
 e.destroy_experiment()
 
-exit()
-
 # rivedere i parametri del modello
 print "ClusteredBA_bottom"
 e.create_experiment()
