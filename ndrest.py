@@ -36,7 +36,8 @@ api = Api(app)
 doc = ApiDoc(app=app)
 CORS(app)
 
-max_number_of_nodes = 1000000
+max_number_of_nodes = 100000
+min_number_of_nodes = 200
 
 # Status code
 success = 200
@@ -391,6 +392,9 @@ class UploadNetwork(Resource):
             else:
                 g = json_graph.node_link_graph(data, directed=False)
 
+            if len(g.nodes()) < min_number_of_nodes or len(g.nodes()) > max_number_of_nodes:
+                return {"Message": "Node number out fo range."}, bad_request
+
             db_net = load_data("data/db/%s/net" % token)
             r = db_net
             r['net'] = {'g': g, 'name': 'Uploaded Graph'}
@@ -576,7 +580,7 @@ class ERGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n < 200 or n > max_number_of_nodes:
+        if n < min_number_of_nodes or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
@@ -626,7 +630,7 @@ class PlantedPartition(Resource):
 
         k = int(request.form['k'])
         l = int(request.form['l'])
-        if k*l < 200 or k*l > max_number_of_nodes:
+        if k*l < min_number_of_nodes or k*l > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
@@ -673,7 +677,7 @@ class BarabasiAlbertGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n < 200 or n > max_number_of_nodes:
+        if n < min_number_of_nodes or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
@@ -715,7 +719,7 @@ class ClusteredBarabasiAlbertGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n < 200 or n > max_number_of_nodes:
+        if n < min_number_of_nodes or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
@@ -758,7 +762,7 @@ class WattsStrogatzGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n < 200 or n > max_number_of_nodes:
+        if n < min_number_of_nodes or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
@@ -798,7 +802,7 @@ class CompleteGraph(Resource):
             return {"Message": "Wrong Token"}, bad_request
 
         n = int(request.form['n'])
-        if n > max_number_of_nodes:
+        if n < 100 or n > max_number_of_nodes:
             return {"Message": "Node number out fo range."}, bad_request
 
         db_net = load_data("data/db/%s/net" % token)
