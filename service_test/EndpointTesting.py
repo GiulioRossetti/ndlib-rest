@@ -86,7 +86,7 @@ class RESTTest(unittest.TestCase):
         res = get('%s/api/Networks' % base).json()
         self.assertIn('networks', res)
 
-        res = put('%s/api/Networks' % base, data={'name': 'Lastfm', 'token': token4})
+        res = put('%s/api/Networks' % base, data={'name': 'CogOp', 'token': token4})
         self.assertEqual(res.status_code, 200)
         print "Load Real Graph: OK"
 
@@ -98,13 +98,9 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "Network Destroy: OK"
 
-        res = put('%s/api/Networks' % base, data={'name': 'Twitter', 'token': token4})
+        res = put('%s/api/Networks' % base, data={'name': 'CogOp', 'token': token4})
         self.assertEqual(res.status_code, 200)
         print "Load Real Graph: OK"
-
-        res = post('%s/api/GetGraph' % base, data={'token': token4})
-        self.assertEqual(res.status_code, 451)
-        print "Get Graph (forbidden): OK"
 
         res = delete('%s/api/Experiment' % base, data={'token': token4})
         self.assertEqual(res.status_code, 200)
@@ -346,7 +342,7 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "List Exploratories: OK"
 
-        res = post('%s/api/Exploratory' % base, data={'exploratory': 'Lastfm_rock', 'token': token})
+        res = post('%s/api/Exploratory' % base, data={'exploratory': 'ClusteredBA_top', 'token': token})
         self.assertEqual(res.status_code, 200)
         print "Load Explortory: OK"
 
