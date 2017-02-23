@@ -5,12 +5,11 @@ __email__ = "giulio.rossetti@gmail.com"
 
 e = NDlibClient("http://127.0.0.1:5000")
 
-
 e.create_experiment()
 x = e.add_barabasi_albert_graph(1000, 10)
 e.add_cognitiveopdyn(0.15, 0, 1, 0, 1, 1/3.0, 1/3.0, 1/3.0)
 tot = 0
-for it in xrange(0, 50):
+for it in xrange(0, 10):
     ex = e.get_iteration()
     for m in ex:
         print it, len(ex[m]['status'])
