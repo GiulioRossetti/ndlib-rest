@@ -28,18 +28,18 @@ Python 2.7 required dependencies:
 #### REST service setup
 Local testing
 ```python
-    python ndrest.py
+python ndrest.py
 ```
 
 Local testig with multiple workers (using [gunicorn](http://gunicorn.org/) web server):
 ```bash
-    gunicorn -w num_workers -b 127.0.0.1:5000 ndrest:app
+gunicorn -w num_workers -b 127.0.0.1:5000 ndrest:app
 ```
 
 In order to change the binding IP/port modify the apidoc.json file.
 To update the API page run the command:
 ```
-    apidoc -i ndlib-rest/ -o ndlib-rest/static/docs
+apidoc -i ndlib-rest/ -o ndlib-rest/static/docs
 ```
 
 
@@ -58,7 +58,7 @@ The command create a new image with the specified name. Pay attention to the ```
 ```
 docker run -d -i -p 5000:5000 [tagname_for_your_image] 
 ```
-This command execute a container with the previous image, boungin the local port 5000 to the internal port of the container. 
+This command execute a container with the previous image, bind the local port 5000 to the internal port of the container. 
 The option ```-d``` make the container to run in the background (detached)
 
 To have a list of all active container
@@ -71,3 +71,16 @@ To stop a container
 ```
 docker stop container_name
 ```
+
+## REST service details
+In ndrest.py are specified limits for graph sizes. 
+In particular it describes the minimum and maximum numbers of nodes (for both generators and loaded networks) as well as the maximum file sizes for upload.
+
+```python
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit for uploads
+max_number_of_nodes = 100000
+min_number_of_nodes = 200 # inherited by networkx
+```
+
+The "complete graph generator" endpoint represents the only exception to the specified lower bound on number of nodes: such model lowers the minimum to 100 nodes.
+Indeed, the suggested limits can be increased to handle bigger graphs.
