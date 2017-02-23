@@ -91,11 +91,11 @@ class CognitiveOpDynModel(DiffusionModel):
         for node in self.graph.nodes():
             T = self.params['nodes']['cognitive'][node][2]
             R = self.params['nodes']['cognitive'][node][0]
-            self.status[node] = self.status[node] + T * (I - self.status[node])
+            actual_status[node] = actual_status[node] + T * (I - actual_status[node])
             if R == 1:
-                self.status[node] = 0.5 * (1 + self.status[node])
+                actual_status[node] = 0.5 * (1 + actual_status[node])
             if R == -1:
-                self.status[node] *= 0.5
+                actual_status[node] *= 0.5
 
         # then interact with peers
         for i in range(0, self.graph.number_of_nodes()):
@@ -109,27 +109,27 @@ class CognitiveOpDynModel(DiffusionModel):
             n2 = neighbours[np.random.randint(0, len(neighbours))]
 
             # update status of n1 and n2
-            p1 = pow(self.status[n1], 1.0 / self.params['nodes']['cognitive'][n1][1])
-            p2 = pow(self.status[n2], 1.0 / self.params['nodes']['cognitive'][n2][1])
+            p1 = pow(actual_status[n1], 1.0 / self.params['nodes']['cognitive'][n1][1])
+            p2 = pow(actual_status[n2], 1.0 / self.params['nodes']['cognitive'][n2][1])
 
             oldn1 = self.status[n1]
             if np.random.random_sample() < p2:  # if node 2 talks, node 1 gets changed
                 T1 = self.params['nodes']['cognitive'][n1][2]
                 R1 = self.params['nodes']['cognitive'][n1][0]
-                self.status[n1] += (1 - T1) * (self.status[n2] - self.status[n1])
+                actual_status[n1] += (1 - T1) * (actual_status[n2] - actual_status[n1])
                 if R1 == 1:
-                    self.status[n1] = 0.5 * (1 + self.status[n1])
+                    actual_status[n1] = 0.5 * (1 + actual_status[n1])
                 if R1 == -1:
-                    self.status[n1] *= 0.5
+                    actual_status[n1] *= 0.5
 
             if np.random.random_sample() < p1:  # if node 1 talks, node 2 gets changed
                 T2 = self.params['nodes']['cognitive'][n2][2]
                 R2 = self.params['nodes']['cognitive'][n2][0]
-                self.status[n2] += (1 - T2) * (oldn1 - self.status[n2])
+                actual_status[n2] += (1 - T2) * (oldn1 - actual_status[n2])
                 if R2 == 1:
-                    self.status[n2] = 0.5 * (1 + self.status[n2])
+                    actual_status[n2] = 0.5 * (1 + actual_status[n2])
                 if R2 == -1:
-                    self.status[n2] *= 0.5
+                    actual_status[n2] *= 0.5
 
         delta = self.status_delta(actual_status)
         self.status = actual_status
