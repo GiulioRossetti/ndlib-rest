@@ -104,6 +104,8 @@ class CognitiveOpDynModel(DiffusionModel):
 
             # select all of the nodes neighbours (no digraph possible)
             neighbours = self.graph.neighbors(n1)
+            if len(neighbours) == 0:
+                continue
 
             # select second node - a random neighbour
             n2 = neighbours[np.random.randint(0, len(neighbours))]
@@ -121,7 +123,6 @@ class CognitiveOpDynModel(DiffusionModel):
                     actual_status[n1] = 0.5 * (1 + actual_status[n1])
                 if R1 == -1:
                     actual_status[n1] *= 0.5
-
             if np.random.random_sample() < p1:  # if node 1 talks, node 2 gets changed
                 T2 = self.params['nodes']['cognitive'][n2][2]
                 R2 = self.params['nodes']['cognitive'][n2][0]
