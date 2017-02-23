@@ -2046,9 +2046,7 @@ class Iteration(Resource):
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
-
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-
                 iteration, status = md.iteration()
 
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
@@ -2366,8 +2364,6 @@ class Exploratory(Resource):
                     for l in f:
                         l = l.rstrip().split(",")
                         conf['edges'].append({'source': int(l[0]), 'target': int(l[1]), 'weight': float(l[2])})
-
-                print conf
 
                 if len(conf) > 0:
                     db_conf = load_data("data/db/%s/configuration" % token)
