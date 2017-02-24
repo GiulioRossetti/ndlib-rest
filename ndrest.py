@@ -478,7 +478,7 @@ class Networks(Resource):
             f = open("data/networks/%s.csv" % name)
             for l in f:
                 l = map(int, l.rstrip().split(","))
-                g.add_edge(l[0], l[1])
+                g.add_edge(int(l[0]), int(l[1]))
 
             db_net = load_data("data/db/%s/net" % token)
             r = db_net
@@ -1030,7 +1030,7 @@ class Threshold(Resource):
         if float(threshold) > 0:
             conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][str(n)] = float(threshold)
+                conf['nodes']['threshold'][n] = float(threshold)
 
         model.set_initial_status(conf)
 
@@ -1379,7 +1379,7 @@ class Profile(Resource):
             if float(profile) > 0:
                 conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][str(n)] = float(profile)
+                    conf['nodes']['profile'][n] = float(profile)
             model.set_initial_status(conf)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
@@ -1461,7 +1461,7 @@ class ProfileThreshold(Resource):
             if float(profile) > 0:
                 conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][str(n)] = float(profile)
+                    conf['nodes']['profile'][n] = float(profile)
 
             if float(threshold) > 0:
                 if 'nodes' not in conf:
@@ -1470,7 +1470,7 @@ class ProfileThreshold(Resource):
                     conf['nodes']['threshold'] = {}
 
                 for n in g.nodes():
-                    conf['nodes']['threshold'][str(n)] = float(threshold)
+                    conf['nodes']['threshold'][n] = float(threshold)
 
             model.set_initial_status(conf)
 
@@ -1826,7 +1826,7 @@ class KerteszThreshold(Resource):
         if float(threshold) > 0:
             conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][str(n)] = float(threshold)
+                conf['nodes']['threshold'][n] = float(threshold)
 
         model.set_initial_status(conf)
 
@@ -2141,6 +2141,7 @@ class IterationBunch(Resource):
         db_models = load_data("data/db/%s/models" % token)
 
         exp = db_models['models'].keys()
+
         db_models.close()
         try:
             ml = [c for c in ml if c != '']
@@ -2323,7 +2324,7 @@ class Exploratory(Resource):
                 f = open("data/networks/%s.csv" % net_name)
                 for l in f:
                     l = map(int, l.rstrip().split(",")[:2])
-                    g.add_edge(l[0], l[1])
+                    g.add_edge(int(l[0]), int(l[1]))
 
                 db_net = load_data("data/db/%s/net" % token)
 

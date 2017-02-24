@@ -226,6 +226,7 @@ class RESTTest(unittest.TestCase):
         print "Experiment Reset: OK"
 
         res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token6}).json()
+        print res
         self.assertEqual(len(res.keys()), 8)
         print "Iteration Bunch: OK"
 

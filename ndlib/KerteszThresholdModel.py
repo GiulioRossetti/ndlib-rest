@@ -56,7 +56,7 @@ class JanosThresholdModel(DiffusionModel):
 
                     if len(neighbors) > 0:
                         infected_ratio = float(infected)/len(neighbors)
-                        if infected_ratio >= self.params['nodes']['threshold'][str(node)]:
+                        if infected_ratio >= self.params['nodes']['threshold'][node]:
                             actual_status[node] = 1
 
         delta = self.status_delta(actual_status)
