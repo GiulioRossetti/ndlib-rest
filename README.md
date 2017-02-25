@@ -79,5 +79,5 @@ max_number_of_nodes = 100000
 min_number_of_nodes = 200 # inherited by networkx
 ```
 
-The "complete graph generator" endpoint represents the only exception to the specified lower bound on number of nodes: such model lowers the minimum to 100 nodes.
-Indeed, the suggested limits can be increased to handle bigger graphs.
+- The "complete graph generator" endpoint represents the only exception to the specified lower bound on number of nodes: such model lowers the minimum to 100 nodes. Indeed, the suggested limits can be increased to handle bigger graphs.
+- When loading external graphs nodes MUST be identified by integer ids.
