@@ -234,9 +234,9 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "Experiment Reset: OK"
 
-        res = post('%s/api/CompleteRun' % base, data={'token': token6}).json()
-        self.assertEqual(len(res.keys()), 8)
-        print "Complete Run: OK"
+        # res = post('%s/api/CompleteRun' % base, data={'token': token6}).json()
+        # self.assertEqual(len(res.keys()), 8)
+        # print "Complete Run: OK"
 
         res = delete('%s/api/Networks' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)

@@ -2167,108 +2167,6 @@ class IterationBunch(Resource):
         return results, success
 
 
-class CompleteRun(Resource):
-
-    def post(self):
-        """
-            @api {post} /api/CompleteRun Complete Run
-            @ApiDescription Return the comlpete run for the all the models bind to the provided token.
-            @apiVersion 0.2.0
-            @apiName complete
-            @apiGroup Iterators
-            @apiParam {String} token    The token.
-            @apiParam {String}  models    String composed by comma separated model names.
-            @apiSuccess {Object}    iteration  Nodes status after an iteration: 0=susceptible, 1=infected, 2=removed.
-            @apiSuccessExample {json} Response example: iteration
-            {
-                'Model1':
-                    [
-                        {
-                            'iteration': 1,
-                            'status':
-                                {
-                                    'node0': 1,
-                                    'node1': 0,
-                                    'node2': 1,
-                                    'node3': 0
-                                }
-                        },
-                        {
-                            'iteration': 2,
-                            'status':
-                                {
-                                    'node0': 1,
-                                    'node1': 1,
-                                    'node2': 1,
-                                    'node3': 0
-                                }
-                        }
-                    ],
-                'Model2':
-                    [
-                        {
-                            'iteration': 1,
-                            'status':
-                                {
-                                    'node0': 1,
-                                    'node1': 1,
-                                    'node2': 0,
-                                    'node3': 0
-                                }
-                        },
-                        {
-                            'iteration': 2,
-                            'status':
-                                {
-                                    'node0': 1,
-                                    'node1': 1,
-                                    'node2': 0,
-                                    'node3': 1
-                                }
-                        }
-                    ]
-            }
-
-            @apiExample [python request] Example usage:
-                        post('http://localhost:5000/api/CompleteRun', data={'token': token, 'models': 'model1,model2'})
-        """
-        token = str(request.form['token'])
-
-        if not os.path.exists("data/db/%s" % token):
-            return {"Message": "Wrong Token"}, bad_request
-
-        ml = []
-        if 'models' in request.form:
-            ml = request.form['models'].split(',')
-
-        db_models = load_data("data/db/%s/models" % token)
-
-        exp = db_models['models'].keys()
-        db_models.close()
-        try:
-            ml = [c for c in ml if c != '']
-            models = ml if len(ml) > 0 else exp
-
-            results = {}
-            for model_name in models:
-                db_mod = load_data("data/db/%s/%s" % (token, model_name))
-
-                r = db_mod
-                md = copy.deepcopy(r[model_name])
-                db_mod.close()
-
-                map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-
-                results[model_name] = md.complete_run()
-
-                db_mod = load_data("data/db/%s/%s" % (token, model_name))
-                db_mod[model_name] = md
-                db_mod.close()
-        except:
-            return {'Message': 'Parameter error'}, bad_request
-        return results, success
-
-
 class Exploratory(Resource):
     """
         @apiDefine Exploratory Exploratory
@@ -2431,7 +2329,7 @@ api.add_resource(Experiment, '/api/Experiment')
 api.add_resource(ExperimentStatus, '/api/ExperimentStatus')
 api.add_resource(Iteration, '/api/Iteration')
 api.add_resource(IterationBunch, '/api/IterationBunch')
-api.add_resource(CompleteRun, '/api/CompleteRun')
+# api.add_resource(CompleteRun, '/api/CompleteRun')
 api.add_resource(Exploratory, '/api/Exploratory')
 api.add_resource(UploadNetwork, '/api/UploadNetwork')
 
