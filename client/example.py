@@ -5,6 +5,18 @@ __email__ = "giulio.rossetti@gmail.com"
 
 e = NDlibClient("http://127.0.0.1:5000")
 
+
+print "indipendent cascades"
+e.create_experiment()
+x = e.add_erdos_renyi_graph(300, 0.01)
+e.add_independent_cascades(0.1)
+tot = 0
+for it in xrange(0, 10):
+    ex = e.get_iteration()
+    for m in ex:
+        print it, len(ex[m]['status'])
+
+
 e.create_experiment()
 x = e.add_erdos_renyi_graph(300, 0.01)
 e.add_cognitiveopdyn(0.15, 0, 1, 0, 1, 1/3.0, 1/3.0, 1/3.0)
