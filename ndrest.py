@@ -1819,7 +1819,7 @@ class KerteszThreshold(Resource):
         g = db_net['net']['g']
         db_net.close()
 
-        model = jt.JanosThresholdModel(g, {'adopter_rate': adopter_rate, 'blocked': blocked})
+        model = jt.KerteszThresholdModel(g, {'adopter_rate': adopter_rate, 'blocked': blocked})
 
         conf = {'model': {'percentage_infected': float(infected)}}
 
