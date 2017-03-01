@@ -17,13 +17,19 @@
       "name": "ClusteredBA_top",
       "network": "ClusteredBA",
       "node_initial_status": ["blocked"],
-      "description": "Initial status of the  10%-top degree nodes is set to blocked (Kertesz Threshold)"
+      "description": "Initial status of the  30%-top degree nodes is set to blocked (Kertesz Threshold)"
     },
     {
       "name": "ClusteredBA_bottom",
       "network": "ClusteredBA",
       "node_initial_status": ["blocked"],
-      "description": "Initial status of the 10%-bottom degree nodes is set to blocked (Kertesz Threshold)"
+      "description": "Initial status of the 30%-bottom degree nodes is set to blocked (Kertesz Threshold)"
+    },
+    {
+      "name": "ClusteredBA_random",
+      "network": "ClusteredBA",
+      "node_initial_status": ["blocked"],
+      "description": "Initial status: 30% of randomly chosen nodes are blocked (Kertesz Threshold)"
     },
     {
       "name": "CogOp_1",
