@@ -6,7 +6,6 @@ All notable changes to this project will be documented in this file.
 - Website
     - REST tutorial
     - Python client tutorial
-    - Model description tutorial ([ndlib](https://github.com/GiulioRossetti/ndlib))
 
 ## [0.9.2]
 ### Added
@@ -19,6 +18,10 @@ All notable changes to this project will be documented in this file.
 	- ClusteredBA_top: Kertesz Threshold test (10%-high degree nodes blocked)
 	- ClusteredBA_bottom: Kertesz Threshold test (10%-low degree nodes blocked)
 	- CogOp: network having powerlaw degree distribution with exponent b=1.6
+
+### Removed
+- Iterators
+    - Complete Run
 	
 ### Updated
 - Tools
@@ -27,7 +30,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Experiment Persistency Model (refactoring)
 - Models
-	- Cognitive Opinion Dynamics (internal status parametrization)
+	- Removed ad-hoc implementations: Models are now available through [ndlib](https://github.com/GiulioRossetti/ndlib) package
 
 ## [0.9.1]
 ### Added
