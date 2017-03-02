@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 	- ClusteredBA_top: Kertesz Threshold test (10%-high degree nodes blocked)
 	- ClusteredBA_bottom: Kertesz Threshold test (10%-low degree nodes blocked)
 	- CogOp: network having powerlaw degree distribution with exponent b=1.6
+- Request Logging
 
 ### Removed
 - Iterators

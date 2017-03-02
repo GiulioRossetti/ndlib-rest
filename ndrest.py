@@ -26,6 +26,8 @@ import networkx as nx
 from networkx.readwrite import json_graph
 import uuid
 import copy
+import logging
+from logging.handlers import RotatingFileHandler
 
 __author__ = "Giulio Rossetti"
 __email__ = "giulio.rossetti@gmail.com"
@@ -48,6 +50,13 @@ forbidden = 403
 not_found = 404
 unavailable = 451
 not_implemented = 501
+
+# Request Logging
+logger = logging.getLogger('werkzeug')
+handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1, encoding='bz2-codec')
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+app.logger.addHandler(handler)
 
 
 def load_data(path):
