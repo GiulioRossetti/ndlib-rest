@@ -16,6 +16,8 @@ for it in xrange(0, 10):
     for m in ex:
         print it, len(ex[m]['status'])
 
+e.destroy_experiment()
+
 
 e.create_experiment()
 x = e.add_erdos_renyi_graph(300, 0.01)
@@ -29,6 +31,8 @@ for it in xrange(0, 10):
 e.destroy_experiment()
 
 # rivedere i parametri del modello
+
+#
 print "ClusteredBA_bottom"
 e.create_experiment()
 e.load_exploratory("ClusteredBA_bottom")
