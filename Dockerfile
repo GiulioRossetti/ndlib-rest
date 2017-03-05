@@ -1,10 +1,18 @@
 FROM python:2.7-slim
 MAINTAINER Salvo Rinzivillo <rinzivillo@isti.cnr.it>
-COPY . /app
-WORKDIR /app
+
+
+COPY requirements.txt /tmp/
+
+
+
 RUN pip install --upgrade pip 
 RUN pip install gunicorn
-RUN pip install -r requirements.txt
+RUN pip install -r /tmp/requirements.txt
+
+
+COPY . /app
+WORKDIR /app
 
 EXPOSE 5000
 
