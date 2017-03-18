@@ -5,4 +5,4 @@ flask_apidoc==1.0.0
 networkx==1.11
 numpy==1.12.0
 scipy==0.18.1
-ndlib
+ndlib==1.0b
