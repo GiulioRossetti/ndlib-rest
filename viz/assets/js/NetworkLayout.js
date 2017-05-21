@@ -12,6 +12,7 @@ function NetworkLayout(){
 	var width;
 	var height;
 	var graph;
+	var model = "SIR_0";
 	
 	function me (canvas){
 		var boundaries = canvas.node().parentNode.getBoundingClientRect();
@@ -55,33 +56,86 @@ function NetworkLayout(){
 		
 		
 		force.on("tick", tick);
-		force.on("end", function(){console.log("end layout")});
+		force.on("end", function(){
+			console.log("end layout")
+			updateIteration(2);
+		});
 		
 	}
 	
 	function tick(){
+		// updateIteration(0);
 		context.clearRect(0, 0, width, height);
 
-		    // draw links
-		    context.strokeStyle = "#ccc";
-			context.globalCompositeOperation = 'overlay';
-		    context.beginPath();
-		    graph.links.forEach(function(d) {
-		      context.moveTo(d.source.x, d.source.y);
-		      context.lineTo(d.target.x, d.target.y);
-		    });
-		    context.stroke();
+		// draw links
+		context.strokeStyle = "#ccc";
+		// context.globalCompositeOperation = 'overlay';
+		context.globalAlpha = 0.2;
+		context.beginPath();
+		graph.links.forEach(function(d) {
+			context.moveTo(d.source.x, d.source.y);
+			context.lineTo(d.target.x, d.target.y);
+		});
+		context.stroke();
 
-		    // draw nodes
-		    context.fillStyle = "steelblue";
-			context.globalCompositeOperation = 'multiply';
-		    context.beginPath();
-		    graph.nodes.forEach(function(d) {
-		      context.moveTo(d.x, d.y);
-		      context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
-		    });
-		    context.fill();
+		// draw nodes
+		context.fillStyle = "steelblue";
+		// context.globalCompositeOperation	 = 'multiply';
+		context.globalAlpha= 1.0;
+		context.beginPath();
+		graph.nodes.forEach(function(d) {
+			context.moveTo(d.x, d.y);
+			context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
+		});
+		context.fill();
 	}
+	
+	function updateIteration(i){
+		context.clearRect(0, 0, width, height);
+
+		// draw links
+		context.strokeStyle = "#ccc";
+		// context.globalCompositeOperation = 'overlay';
+		context.globalAlpha = 0.2;
+		context.beginPath();
+		graph.links.forEach(function(d) {
+			context.moveTo(d.source.x, d.source.y);
+			context.lineTo(d.target.x, d.target.y);
+		});
+		context.stroke();
+
+		// draw nodes
+		
+		context.globalAlpha= 1.0;
+		context.fillStyle = "steelblue";
+		context.beginPath();
+		graph.nodes
+		.filter(function(n){
+			return n.events[model]
+				.filter(function(e){
+					return e.i <= i
+				}).slice(-1)[0].s == 1
+			
+		})
+		.forEach(function(d) {
+			context.moveTo(d.x, d.y);
+			context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
+		});
+		context.fill();
+		
+		// context.fillStyle = "magenta";
+// 		context.beginPath();
+// 		graph.nodes
+// 		.filter(function(n){
+// 			return n.events[model][i] == 0;
+// 		})
+// 		forEach(function(d) {
+// 			context.moveTo(d.x, d.y);
+// 			context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
+// 		});
+// 		context.fill();
+	}
+	
 	
 	return me;
 	

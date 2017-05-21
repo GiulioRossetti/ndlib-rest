@@ -5,6 +5,11 @@
             "gamma": 0.1,
             "percentage_infected_nodes": 0.1,
             "selected_initial_infected": false
+        },
+        "SI_0": {
+            "beta": 0.1,
+            "percentage_infected_nodes": 0.1,
+            "selected_initial_infected": false
         }
     },
     "Network": {

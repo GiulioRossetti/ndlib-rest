@@ -1,4 +1,4 @@
-var dispatch = d3.dispatch("createdExperiment");
+var dispatch = d3.dispatch("createdExperiment","loadedNetwork");
 
 
 
@@ -20,10 +20,7 @@ dispatch.on("createdExperiment.network", function(){
 		
 		console.log("network", data);
 		
-		var netviz = NetworkLayout();
-		d3.select("#network-viz").select("canvas")
-		.datum(data)
-		.call(netviz);
+		dispatch.loadedNetwork(data);
 	})
 })
 
@@ -64,4 +61,36 @@ dispatch.on("createdExperiment.experiment", function(){
 		.call(ModelStatisticsCounter());
 		
 	})
+})
+
+
+
+dispatch.on("loadedNetwork.timeline", function(network){
+	
+	d3.json("assets/data/iteration.json", function(error, data){
+		console.log("iterations",data);
+		
+		// for each model
+		d3.entries(data).forEach(function(m){
+			var modelName = m.key;
+			// for each iteration
+			m.value.forEach(function(i){
+				var ts = i.iteration;
+				d3.entries(i.status).forEach(function(j){
+					var node = network.nodes[j.key];
+					var evtModel = node.events || (node.events = {});
+					var evt = evtModel[modelName] || (evtModel[modelName]=[]);
+					evt.push({i:ts, s: j.value})
+				})
+			})
+		})
+	})	
+})
+
+
+dispatch.on("loadedNetwork.network", function(network){
+	var netviz = NetworkLayout();
+	d3.select("#network-viz").select("canvas")
+	.datum(network)
+	.call(netviz);
 })
