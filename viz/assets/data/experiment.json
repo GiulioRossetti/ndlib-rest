@@ -1,0 +1,17 @@
+{
+    "Models": {
+        "SIR_0": {
+            "beta": 0.1,
+            "gamma": 0.1,
+            "percentage_infected_nodes": 0.1,
+            "selected_initial_infected": false
+        }
+    },
+    "Network": {
+        "name": "ERGraph",
+        "params": {
+            "n": 300,
+            "p": 0.1
+        }
+    }
+}

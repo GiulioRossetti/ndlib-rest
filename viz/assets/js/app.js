@@ -1,5 +1,3 @@
-
-
 function App(){
 	
 	function me(selection){
@@ -20,6 +18,8 @@ function App(){
 			if(error) console.log(error);
 			console.log("generators", generators);
 			console.log("networks", networks);
+			
+			var parameters = {};
 			
 			var cmb = form.select(".cmb-network-selection");
 			cmb.classed("dropdown", true)
@@ -47,9 +47,10 @@ function App(){
 				.text(function(d){return d.name})
 				.on("click", function(d){
 					console.log("selected", d);
+					parameters = {generators:d};
 					var params = form.select(".network-parameters");
-					// params.selectAll("*").remove();
-					
+					params.selectAll("button.create").remove();
+					params.selectAll("div.form-group").remove();
 					var divs = params.selectAll("div.form-group")
 						.data(d3.entries(d.params)
 							.filter(function(p){return p.key!="token"}),
@@ -73,12 +74,41 @@ function App(){
 						.attr("for", function(p){return d.name+"-"+p.key});
 					divGroup.select("input")
 						.attr("id", function(p){return d.name+"-"+p.key})
-						.on("click", function(e){console.log(e)})
+						.on("change", function(e){
+							parameters[e.key] = this.value;
+						});
 					divGroup.select("p.help-block")
 						.text(function(p){return p.value});
-					
+						
+					params.append("button")
+						.attr({
+							type:"button",
+							class:"btn btn-default create"
+						})
+						.text("Create experiment")
+						.on("click", function(e){
+							// create a new experiment;
+							// d3.json(API_HOST+"/api/Experiment", function(eerror, edata){
+// 								console.log("parameters", parameters);
+// 								if(eerror) console.log(eerror);
+// 								parameters["token"] = edata.token;
+// 								console.log("created experiment", edata);
+//
+// 								d3.json(API_HOST+parameters.generators.uri)
+// 									.header("Content-Type", "application/json")
+// 									.send(
+// 										"put",
+// 										JSON.stringify(parameters),
+// 										function(gerror, gdata){
+// 											console.log(gdata);
+// 										}
+// 										)
+//
+//
+// 							})
+							dispatch.createdExperiment();
+						})
 				});
-			
 		})
 		
 	}
