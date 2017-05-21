@@ -13,6 +13,9 @@ function NetworkLayout(){
 	var height;
 	var graph;
 	var model = "SIR_0";
+	var nodeColor = d3.scale.ordinal()
+		.domain([0,1,2])
+	.range(colorbrewer['RdYlBu'][3]);
 	
 	function me (canvas){
 		var boundaries = canvas.node().parentNode.getBoundingClientRect();
@@ -58,7 +61,7 @@ function NetworkLayout(){
 		force.on("tick", tick);
 		force.on("end", function(){
 			console.log("end layout")
-			updateIteration(2);
+			updateIteration(1);
 		});
 		
 	}
@@ -105,35 +108,29 @@ function NetworkLayout(){
 		context.stroke();
 
 		// draw nodes
-		
 		context.globalAlpha= 1.0;
-		context.fillStyle = "steelblue";
-		context.beginPath();
-		graph.nodes
-		.filter(function(n){
-			return n.events[model]
+		nodeColor.domain().forEach(function(c){
+			context.fillStyle = nodeColor(c);
+			
+			context.beginPath();
+			var selected = graph.nodes
+			.filter(function(n){
+				return  getNodeStatusAtIteration(n,i)== c
+			});
+			console.log("Selected " + c, selected.length);
+			selected.forEach(function(d) {
+				context.moveTo(d.x, d.y);
+				context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
+			});
+			context.fill();
+		})
+	}
+	
+	function getNodeStatusAtIteration(n,i){
+		return n.events[model]
 				.filter(function(e){
 					return e.i <= i
-				}).slice(-1)[0].s == 1
-			
-		})
-		.forEach(function(d) {
-			context.moveTo(d.x, d.y);
-			context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
-		});
-		context.fill();
-		
-		// context.fillStyle = "magenta";
-// 		context.beginPath();
-// 		graph.nodes
-// 		.filter(function(n){
-// 			return n.events[model][i] == 0;
-// 		})
-// 		forEach(function(d) {
-// 			context.moveTo(d.x, d.y);
-// 			context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
-// 		});
-// 		context.fill();
+				}).slice(-1)[0].s
 	}
 	
 	
