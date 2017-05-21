@@ -2,41 +2,56 @@ function NetworkLayout(){
 	
 	
 	var force = d3.layout.force()
-		.gravity(0.1)
-		.charge(-250)
-	.linkDistance(150);
+		// .gravity(0.1)
+		.charge(-400)
+	.linkDistance(200);
 	
 	var link;
 	var node;
+	var context;
+	var width;
+	var height;
+	var graph;
 	
-	function me (svg){
-		var boundaries = svg.node().getBoundingClientRect();
+	function me (canvas){
+		var boundaries = canvas.node().parentNode.getBoundingClientRect();
 		console.log("dimensions", boundaries);
+		width = boundaries.width;
+		height = boundaries.height;
+		graph = canvas.datum();
+		canvas.node().width = width;
 		
+		context = canvas.node().getContext("2d");
+		console.log(canvas.node())
 		force.size([boundaries.width, boundaries.height]);
 		
-		force.nodes(svg.datum().nodes)
-			.links(svg.datum().links)
+		graph.nodes.forEach(function(n){
+			n.x = width/2+100*Math.random();
+			n.y = height/2+100*Math.random();
+		})
+		
+		force.nodes(graph.nodes)
+			.links(graph.links)
 		.start();
 		
 		
-		link = svg.append("g")
-			.classed("links",true)
-			.selectAll(".link")
-			.data(svg.datum().links)
-			.enter()
-			.append("line")
-			.classed("link", true)
-		.style("stroke-width", 1);
-		
-		node = svg.append("g")
-			.classed("nodes", true)
-			.selectAll(".node")
-			.data(svg.datum().nodes)
-			.enter()
-			.append("circle")
-			.classed("node", true)
-		.attr("r", 5);
+		// link = svg.append("g")
+		// 	.classed("links",true)
+		// 	.selectAll(".link")
+		// 	.data(svg.datum().links)
+		// 	.enter()
+		// 	.append("line")
+		// 	.classed("link", true)
+		// .style("stroke-width", 1);
+		//
+		// node = svg.append("g")
+		// 	.classed("nodes", true)
+		// 	.selectAll(".node")
+		// 	.data(svg.datum().nodes)
+		// 	.enter()
+		// 	.append("circle")
+		// 	.classed("node", true)
+		// .attr("r", 5);
 		
 		
 		force.on("tick", tick);
@@ -45,13 +60,27 @@ function NetworkLayout(){
 	}
 	
 	function tick(){
-		link.attr("x1", function(d) { return d.source.x; })
-			.attr("y1", function(d) { return d.source.y; })
-			.attr("x2", function(d) { return d.target.x; })
-			.attr("y2", function(d) { return d.target.y; });
+		context.clearRect(0, 0, width, height);
 
-		node.attr("cx", function(d) { return d.x; })
-			.attr("cy", function(d) { return d.y; });
+		    // draw links
+		    context.strokeStyle = "#ccc";
+			context.globalCompositeOperation = 'overlay';
+		    context.beginPath();
+		    graph.links.forEach(function(d) {
+		      context.moveTo(d.source.x, d.source.y);
+		      context.lineTo(d.target.x, d.target.y);
+		    });
+		    context.stroke();
+
+		    // draw nodes
+		    context.fillStyle = "steelblue";
+			context.globalCompositeOperation = 'multiply';
+		    context.beginPath();
+		    graph.nodes.forEach(function(d) {
+		      context.moveTo(d.x, d.y);
+		      context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
+		    });
+		    context.fill();
 	}
 	
 	return me;
