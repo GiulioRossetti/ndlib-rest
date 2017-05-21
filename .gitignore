@@ -40,3 +40,4 @@ venv
 ndlib
 
 *.pyc
+viz/assets/js/api_config\.js
