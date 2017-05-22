@@ -88,24 +88,24 @@ function App(){
 						.text("Create experiment")
 						.on("click", function(e){
 							// create a new experiment;
-							// d3.json(API_HOST+"/api/Experiment", function(eerror, edata){
-// 								console.log("parameters", parameters);
-// 								if(eerror) console.log(eerror);
-// 								parameters["token"] = edata.token;
-// 								console.log("created experiment", edata);
-//
-// 								d3.json(API_HOST+parameters.generators.uri)
-// 									.header("Content-Type", "application/json")
-// 									.send(
-// 										"put",
-// 										JSON.stringify(parameters),
-// 										function(gerror, gdata){
-// 											console.log(gdata);
-// 										}
-// 										)
-//
-//
-// 							})
+							d3.json(API_HOST+"/api/Experiment", function(eerror, edata){
+								console.log("parameters", parameters);
+								if(eerror) console.log(eerror);
+								parameters["token"] = edata.token;
+								console.log("created experiment", edata);
+
+								d3.json(API_HOST+parameters.generators.uri)
+									.header("Content-Type", "application/json")
+									.send(
+										"put",
+										JSON.stringify(parameters),
+										function(gerror, gdata){
+											console.log(gdata);
+										}
+										)
+
+
+							})
 							dispatch.createdExperiment();
 						})
 				});

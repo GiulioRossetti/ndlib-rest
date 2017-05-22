@@ -42,3 +42,4 @@ ndlib
 *.pyc
 viz/assets/js/api_config\.js
 data/db/*
+\.DS_Store
