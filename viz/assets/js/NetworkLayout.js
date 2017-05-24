@@ -61,7 +61,7 @@ function NetworkLayout(){
 		force.on("tick", tick);
 		force.on("end", function(){
 			console.log("end layout")
-			updateIteration(1);
+			//updateIteration(3);
 		});
 		
 	}
