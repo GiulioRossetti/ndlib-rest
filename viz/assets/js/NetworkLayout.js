@@ -134,6 +134,10 @@ function NetworkLayout(){
 	}
 	
 	
+	me.graph = function(){
+		return graph;
+	}
+	
 	return me;
 	
 }

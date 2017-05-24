@@ -46,6 +46,10 @@ function App(){
 								app.experiment.createModel(mparameters.generators.uri, mparameters,function(g){
 									console.log(g);
 									dispatch.createdModel();
+									app.experiment.iterationBunch(100,function(iterations){
+										dispatch.executedIterations(iterations);
+									})
+									
 								})
 							}
 							
