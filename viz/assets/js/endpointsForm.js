@@ -1,26 +1,28 @@
 function EndPointForm(){
 	
+	var type = "network";
+	var parameters = {};
 	
 	function me(selection){
-		var parameters = {};
 		
-		var cmb = selection.select(".cmb-network-selection");
+		
+		var cmb = selection.select(".cmb-"+type+"-selection");
 		cmb.classed("dropdown", true)
 		cmb.append("button")
 			.attr({
 				class:"btn btn-default dropdown-toggle",
 				type:"button",
-				id:"drpNetwors",
+				id:"drp"+type,
 				"data-toggle":"dropdown",
 				"aria-haspopup":true,
 				"aria-expanded":true
 			})
-			.text("Select a network")
+			.text("Select a "+type)
 			.append("span").classed("caret",true);
 		cmb.append("ul")
 			.attr({
 				"class":"dropdown-menu",
-				"aria-labelledby": "drpNetwors"
+				"aria-labelledby": "drp"+type
 			})
 			.selectAll("li")
 			.data(selection.datum().endpoints)
@@ -31,7 +33,7 @@ function EndPointForm(){
 			.on("click", function(d){
 				console.log("selected", d);
 				parameters = {generators:d};
-				var params = selection.select(".network-parameters");
+				var params = selection.select("."+type+"-parameters");
 				params.selectAll("button.create").remove();
 				params.selectAll("div.form-group").remove();
 				var divs = params.selectAll("div.form-group")
@@ -68,23 +70,25 @@ function EndPointForm(){
 						type:"button",
 						class:"btn btn-default create"
 					})
-					.text("Create network")
-					.on("click", function(e){
-						app.experiment.createExperiment(function(data){
-							// experiment created
-							dispatch.createdExperiment();
-							app.experiment.createNetwork(parameters.generators.name,parameters, function(d){
-								app.experiment.getGraph(function(n){
-									dispatch.loadedNetwork(n);
-								})
-								
-							})
-							
-						});
-					})
+					.text("Create " + type)
+					.on("click", me.submit)
 			});
 		
 		
+	}
+	
+	me.type = function(_){
+		if(!arguments.length) return type;
+		type = _;
+		
+		return me;
+	}
+	
+	me.parameters = function(){
+		return parameters;
+	}
+	
+	me.submit = function(e){
 	}
 	
 	

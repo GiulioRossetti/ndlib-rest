@@ -10,7 +10,6 @@ function App(){
 	}
 	
 	formCreateExperiment =  function(selection){
-		var form = selection.select("#pnl-create-network")
 		var q = d3.queue();
 		
 		q
@@ -23,8 +22,40 @@ function App(){
 			console.log("networks", networks);
 			console.log("models", models)
 			
-			form.datum(generators)
-			.call(EndPointForm());
+			var epNetwork = EndPointForm();			
+			selection.select("#pnl-create-network").datum(generators)
+			.call(epNetwork);
+			
+			epNetwork.submit = function(e){
+				app.experiment.createExperiment(function(data){
+					// experiment created
+					dispatch.createdExperiment();
+					var parameters = epNetwork.parameters();
+					app.experiment.createNetwork(parameters.generators.uri,parameters, function(d){
+						app.experiment.getGraph(function(n){
+							dispatch.loadedNetwork(n);
+							
+							selection.select("#pnl-create-model")
+							.style("display","block")
+							var epModel = EndPointForm().type("model");
+							selection.select("#pnl-create-model").datum(models)
+							.call(epModel);
+							epModel.submit = function(e){
+								console.log(epModel.parameters());
+								var mparameters = epModel.parameters();
+								app.experiment.createModel(mparameters.generators.uri, mparameters,function(g){
+									console.log(g);
+									dispatch.createdModel();
+								})
+							}
+							
+						})
+				
+					})
+			
+				});
+			}
+			
 		})
 		
 	}

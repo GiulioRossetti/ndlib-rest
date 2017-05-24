@@ -42,18 +42,18 @@ function Experiment(){
 		send(API_HOST+"/api/Models", "GET", null, _)
 	}
 	
-	me.createNetwork = function(name, params, _){
+	me.createNetwork = function(uri, params, _){
 		params.token = token;
-		send(API_HOST+"/api/Generators/"+name, "put",params, _)
+		send(API_HOST+uri, "put",params, _)
 	}
 	
 	me.getGraph = function(_){
 		send(API_HOST+"/api/GetGraph","post",{token:token},_);
 	}
 	
-	me.createModel = function(name, params, _){
+	me.createModel = function(uri, params, _){
 		params.token = token;
-		send(API_HOST+"/api/"+name, "put",params, _)
+		send(API_HOST+uri, "put",params, _)
 	}
 	
 	me.iterationBunch = function(num, _){

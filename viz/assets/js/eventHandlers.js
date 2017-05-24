@@ -1,4 +1,4 @@
-var dispatch = d3.dispatch("createdExperiment","loadedNetwork");
+var dispatch = d3.dispatch("createdExperiment","loadedNetwork", "createdModel");
 
 
 
@@ -10,6 +10,11 @@ dispatch.on("createdExperiment.form",function(){
 	.style("display", "none");
 	
 	// get token
+})
+
+dispatch.on("createdModel.form", function(){
+	d3.select("#pnl-create-model")
+	.style("display", "none");
 })
 
 
@@ -29,8 +34,8 @@ dispatch.on("createdExperiment.form",function(){
 // })
 
 
-dispatch.on("createdExperiment.experiment", function(){
-	d3.json("assets/data/experiment.json", function(error, data){
+dispatch.on("createdModel.experiment", function(){
+	app.experiment.describe(function(data){
 		console.log("experiment", data);
 		
 		var div = d3.select("#models-viz")
@@ -64,7 +69,9 @@ dispatch.on("createdExperiment.experiment", function(){
 			.datum(d3.entries(data.Models))
 		.call(ModelStatisticsCounter());
 		
-	})
+	});
+	
+
 })
 
 
