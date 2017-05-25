@@ -132,11 +132,13 @@ dispatch.on("executedIterations.timeline", function(data){
 				sums[s] = d3.range(numIterations).map(function(){return 0})
 			});
 
-			network.nodes//.filter(function(n,i){return i < 1})
+			network.nodes.filter(function(n,i){return i < 1})
 			.forEach(function(n,i){
 				n.events[model].forEach(function(e,j){
 					var nextPos = (j<n.events[model].length-1 ? n.events[model][j+1].i:numIterations);
-					d3.range(e.i, nextPos).forEach(function(p){
+					var segnode = d3.range(e.i, nextPos);
+					console.log(e.s,segnode);
+					segnode.forEach(function(p){
 						sums[e.s][p]++;
 					})
 				})
