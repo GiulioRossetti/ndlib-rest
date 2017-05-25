@@ -121,61 +121,54 @@ dispatch.on("executedIterations.timeline", function(data){
 // 		})
 
 		var model = "SIR_0";
-		var numIterations = data[model].length;
-		var nodeColor = d3.scale.ordinal()
-			.domain([0,1,2])
-		.range(colorbrewer['RdYlBu'][3]);
+		d3.keys(data).forEach(function(model){
+			var numIterations = data[model].length;
+			var nodeColor = d3.scale.ordinal()
+				.domain([0,1,2])
+			.range(colorbrewer['RdYlBu'][3]);
 
-		var sums = {};
-		nodeColor.domain().forEach(function(s){
-			sums[s] = d3.range(numIterations).map(function(){return 0})
-		});
+			var sums = {};
+			nodeColor.domain().forEach(function(s){
+				sums[s] = d3.range(numIterations).map(function(){return 0})
+			});
 
-		network.nodes//.filter(function(n,i){return i < 10})
-		.forEach(function(n,i){
-			n.events[model].forEach(function(e,j){
-				var nextPos = (j<n.events[model].length-1 ? n.events[model][j+1].i:numIterations);
-				d3.range(e.i, nextPos).forEach(function(c,k){
-					sums[e.s][k]++;
+			network.nodes//.filter(function(n,i){return i < 1})
+			.forEach(function(n,i){
+				n.events[model].forEach(function(e,j){
+					var nextPos = (j<n.events[model].length-1 ? n.events[model][j+1].i:numIterations);
+					d3.range(e.i, nextPos).forEach(function(p){
+						sums[e.s][p]++;
+					})
 				})
 			})
+
+
+			nv.addGraph(function(){
+				var chart = nv.models.stackedAreaChart()
+					// .x(function(d,i){return i})
+	// 			.y(function(d,i){return d});
+
+			d3.select("#chart svg")
+				.datum(d3.entries(sums).map(function(d){
+					return {
+						key: d.key,
+						values: d.value.map(function(v,i){
+							return {x:i, y:v}
+						}),
+						color: nodeColor(d.key)
+					}
+				}));
+
+				console.log(d3.select("#chart svg").datum());
+				d3.select("#chart svg").call(chart);
+				return chart;
+			})
+
+
+			console.log("sums",sums);
 		})
-
-
-		nv.addGraph(function(){
-			var chart = nv.models.stackedAreaChart()
-				// .x(function(d,i){return i})
-// 			.y(function(d,i){return d});
-
-
-
-		d3.select("#chart svg")
-			.datum(d3.entries(sums).map(function(d){
-				return {
-					key: d.key,
-					values: d.value.map(function(v,i){
-						return {x:i, y:v}
-					}),
-					color: nodeColor(d.key)
-				}
-			}));
-
-
-
-
-
-			console.log(d3.select("#chart svg").datum());
-
-
-			d3.select("#chart svg").call(chart);
-
-			return chart;
-
-
-		})
-
-
-		console.log("sums",sums);
+		
+			
 
 })
 
