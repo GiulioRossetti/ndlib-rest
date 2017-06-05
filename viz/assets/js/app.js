@@ -1,4 +1,5 @@
 function App(){
+	var descriptor = {};
 	
 	me.experiment = Experiment();
 	
@@ -44,23 +45,25 @@ function App(){
 								app.experiment.createModel(mparameters.generators.uri, mparameters,function(g){
 									console.log(g);
 									dispatch.createdModel();
-									app.experiment.iterationBunch(100,function(iterations){
-										dispatch.executedIterations(iterations);
-									})
-									
+									// app.experiment.iterationBunch(100,function(iterations){
+//										dispatch.executedIterations(iterations);
+//									})
 								})
 							}
-							
 						})
-				
 					})
-			
 				});
 			}
-			
 		})
-		
 	}
+	
+	me.descriptor = function(_){
+		if(!arguments.length) return descriptor;
+		descriptor = _;
+		
+		return me;
+	}
+	
 	
 	return me;
 }
@@ -69,5 +72,3 @@ var app = App();
 
 	d3.select("body")
 	.call(app);
-
-	var exp = Experiment();

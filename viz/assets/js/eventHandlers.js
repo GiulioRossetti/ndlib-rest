@@ -17,58 +17,21 @@ dispatch.on("createdModel.form", function(){
 	.style("display", "none");
 })
 
-
-// dispatch.on("createdExperiment.network", function(){
-//
-// 	d3.json("assets/data/network.json", function(error, data){
-// 		if(error) console.log(error);
-//
-// 		console.log("network", data);
-//
-// 		dispatch.loadedNetwork(data);
-// 	})
-//
-//
-//
-//
-// })
-
-
 dispatch.on("createdModel.experiment", function(){
 	app.experiment.describe(function(data){
 		console.log("experiment", data);
 		
-		var div = d3.select("#models-viz")
-			// .append("div")
-// 			.classed("row",true);
-		// div.classed("container", true);
 		
-		var h3 = div.append("h3");
-		h3.append("span")
-		.text(" Statistics");
-		h3.insert("span",":first-child")
-		.classed("glyphicon glyphicon-signal", true);
-		div.append("hr");
-
+		// update models list
+		var modelPanels = d3.select("#models-viz")
+			.selectAll("div.model-panel")
+		.data(d3.entries(data.Models));
+			
+		modelPanels.enter()
+			.append("div")
+		.attr("class","model-panel");
 		
-		div.append("h4")
-		.text("Network");
-		
-		div.append("div")
-			.classed("row",true)
-			.datum(data.Network)
-			.call(NetworkStatisticsCounter());
-		
-		// div.append("div")
-		// 	.classed("row",true)
-		div.append("h4")
-		.text("Models");
-		
-		div.append("div")
-			.classed("row", true)
-			.datum(d3.entries(data.Models))
-		.call(ModelStatisticsCounter());
-		
+		modelPanels.call(ModelView());
 	});
 	
 
