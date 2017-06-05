@@ -1,5 +1,6 @@
 function App(){
 	var descriptor = {};
+	me.modelViewers ={};
 	
 	me.experiment = Experiment();
 	
@@ -45,9 +46,9 @@ function App(){
 								app.experiment.createModel(mparameters.generators.uri, mparameters,function(g){
 									console.log(g);
 									dispatch.createdModel();
-									// app.experiment.iterationBunch(100,function(iterations){
-//										dispatch.executedIterations(iterations);
-//									})
+									app.experiment.iterationBunch(20,function(iterations){
+										dispatch.executedIterations(iterations);
+									})
 								})
 							}
 						})
@@ -63,6 +64,8 @@ function App(){
 		
 		return me;
 	}
+	
+	
 	
 	
 	return me;

@@ -21,31 +21,36 @@ dispatch.on("createdModel.experiment", function(){
 	app.experiment.describe(function(data){
 		console.log("experiment", data);
 		
-		
+		app.descriptor(data);
 		// update models list
 		var modelPanels = d3.select("#models-viz")
 			.selectAll("div.model-panel")
-		.data(d3.entries(data.Models));
-			
+		.data(d3.entries(data.Models), function(d){return d.key});
+		
 		modelPanels.enter()
 			.append("div")
 		.attr("class","model-panel");
 		
-		modelPanels.call(ModelView());
+		d3.keys(data.Models).forEach(function(d,i){
+			d.viewer = app.modelViewers[d] || (app.modelViewers[d] = ModelView());
+		})
+		
+		modelPanels.each(function(d){
+			console.log("mp",d);
+			d3.select(this).call(app.modelViewers[d.key]);
+		})
+		
+		
+		// modelPanels.call(ModelView());
+		// modelPanels.call(function(d){return app.modelViewers[d.key]});
 	});
-	
-
 })
-
-
 
 dispatch.on("executedIterations.timeline", function(data){
 
 		console.log("iterations",data);
-
 		var network = netviz.graph();
 		console.log("network", network);
-
 		// for each model
 		d3.entries(data).forEach(function(m){
 			var modelName = m.key;
@@ -61,28 +66,6 @@ dispatch.on("executedIterations.timeline", function(data){
 			})
 		});
 
-
-		// var model = "SIR_0";
-// 		// create data model for chart
-		// var numIterations = data[model].length;
-// 		var values = d3.range(numIterations).map(function(){return 0});
-// 		network.nodes.filter(function(n,i){return i < 10})
-// 		.forEach(function(n,i){
-// 			var mater = n.events[model].map(function(e,j){
-// 				var currentStatus = e.s;
-// 				var currPos = e.i;
-// 				var nextPos = (j<n.events[model].length-1 ? n.events[model][j+1].i:numIterations);
-// 				return d3.range(nextPos-currPos).map(function(s){return e.s});
-// 			});
-// 			mater = d3.merge(mater);
-// 			var sum = values.map(function(v,k){
-// 				return v + mater[k];
-// 			})
-// 			values = sum;
-// 			console.log(n,values);
-//
-// 		})
-
 		var model = "SIR_0";
 		d3.keys(data).forEach(function(model){
 			var numIterations = data[model].length;
@@ -95,7 +78,7 @@ dispatch.on("executedIterations.timeline", function(data){
 				sums[s] = d3.range(numIterations).map(function(){return 0})
 			});
 
-			network.nodes.filter(function(n,i){return i < 1})
+			network.nodes.filter(function(n,i){return true})
 			.forEach(function(n,i){
 				n.events[model].forEach(function(e,j){
 					var nextPos = (j<n.events[model].length-1 ? n.events[model][j+1].i:numIterations);
@@ -108,27 +91,27 @@ dispatch.on("executedIterations.timeline", function(data){
 			})
 
 
-			nv.addGraph(function(){
-				var chart = nv.models.lineChart()
-					// .x(function(d,i){return i})
-	// 			.y(function(d,i){return d});
-
-			d3.select("#chart svg")
-				.datum(d3.entries(sums).map(function(d){
-					return {
-						key: d.key,
-						values: d.value.map(function(v,i){
-							return {x:i, y:v}
-						}),
-						color: nodeColor(d.key)
-					}
-				}));
-
-				console.log(d3.select("#chart svg").datum());
-				d3.select("#chart svg").call(chart);
-				return chart;
-			})
-
+			// nv.addGraph(function(){
+// 				var chart = nv.models.lineChart()
+// 					// .x(function(d,i){return i})
+// 	// 			.y(function(d,i){return d});
+//
+// 			d3.select("#chart svg")
+// 				.datum(d3.entries(sums).map(function(d){
+// 					return {
+// 						key: d.key,
+// 						values: d.value.map(function(v,i){
+// 							return {x:i, y:v}
+// 						}),
+// 						color: nodeColor(d.key)
+// 					}
+// 				}));
+//
+// 				console.log(d3.select("#chart svg").datum());
+// 				d3.select("#chart svg").call(chart);
+// 				return chart;
+// 			})
+//
 
 			console.log("sums",sums);
 		})
