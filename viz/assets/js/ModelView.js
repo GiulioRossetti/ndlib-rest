@@ -66,9 +66,12 @@ function ModelView(){
 
 		var chart = nv.models.lineWithFocusChart()
 			.useInteractiveGuideline(true);
-			chart.focus.dispatch.on("brush", function(extent){
-				console.log(extent);
-				console.log(this);
+			// chart.focus.dispatch.on("brush", function(extent){
+			// 	console.log(extent);
+			// 	console.log(this);
+			// });
+			chart.interactiveLayer.dispatch.on("elementClick.test", function(e){
+				console.log(e);
 			})
 		panel.select("div.charts .line-chart svg")
 		.datum(d3.entries(trendData).map(function(d){
