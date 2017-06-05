@@ -1,5 +1,5 @@
 function NetworkLayout(){
-	
+	var canvas;
 	
 	var force = d3.layout.force()
 		// .gravity(0.1)
@@ -17,17 +17,59 @@ function NetworkLayout(){
 		.domain([0,1,2])
 	.range(colorbrewer['RdYlBu'][3]);
 	
-	function me (canvas){
-		var boundaries = canvas.node().parentNode.getBoundingClientRect();
+	function me(selection){
+
+		
+		var boundaries = selection.node().getBoundingClientRect();
 		console.log("dimensions", boundaries);
 		width = boundaries.width;
-		height = boundaries.height;
-		graph = canvas.datum();
-		canvas.node().width = width;
+		height = 600
+		graph = selection.datum();
+		
+		
+		if(!canvas){
+			var panel = selection.append("div")
+				.attr({
+					"class": "panel panel-default",
+				});
+			panel.append("div")
+				.attr({
+					"class": "panel-heading"
+				})
+				.text("Network");
+			canvas = panel.append("div")
+				.attr("class","panel-body")
+				.append("canvas")
+				.attr("width", width)
+			.attr("height", height);
+			var stats = panel.append("div")
+			.attr("class","panel-body");
+			;
+			
+			stats.append("h5")
+			.attr("class","col-md-4 graph-name");
+			
+			stats.append("h5")
+			.attr("class","col-md-4 graph-num-nodes");
+			
+			stats.append("h5")
+			.attr("class","col-md-4 graph-num-links");
+			
+		}
+		
+		
+		selection.select(".graph-num-nodes")
+			.text(function(d){return "# nodes: " + d.nodes.length});
+			
+		selection.select(".graph-name")
+			.text(function(d){return d.graph.name});
+			
+		selection.select(".graph-num-links")
+			.text(function(d){return "# links: " + d.links.length});
 		
 		context = canvas.node().getContext("2d");
-		console.log(canvas.node())
-		force.size([boundaries.width, boundaries.height]);
+		console.log(canvas)
+		force.size([width, height]);
 		
 		graph.nodes.forEach(function(n){
 			n.x = width/2+100*Math.random();
@@ -37,26 +79,6 @@ function NetworkLayout(){
 		force.nodes(graph.nodes)
 			.links(graph.links)
 		.start();
-		
-		
-		// link = svg.append("g")
-		// 	.classed("links",true)
-		// 	.selectAll(".link")
-		// 	.data(svg.datum().links)
-		// 	.enter()
-		// 	.append("line")
-		// 	.classed("link", true)
-		// .style("stroke-width", 1);
-		//
-		// node = svg.append("g")
-		// 	.classed("nodes", true)
-		// 	.selectAll(".node")
-		// 	.data(svg.datum().nodes)
-		// 	.enter()
-		// 	.append("circle")
-		// 	.classed("node", true)
-		// .attr("r", 5);
-		
 		
 		force.on("tick", tick);
 		force.on("end", function(){

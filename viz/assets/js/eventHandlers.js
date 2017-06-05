@@ -146,7 +146,7 @@ dispatch.on("executedIterations.timeline", function(data){
 
 
 			nv.addGraph(function(){
-				var chart = nv.models.stackedAreaChart()
+				var chart = nv.models.lineChart()
 					// .x(function(d,i){return i})
 	// 			.y(function(d,i){return d});
 
@@ -177,7 +177,7 @@ dispatch.on("executedIterations.timeline", function(data){
 
 dispatch.on("loadedNetwork.network", function(network){
 
-	d3.select("#network-viz").select("canvas")
+	d3.select("#network-viz")
 	.datum(network)
 	.call(netviz);
 })
