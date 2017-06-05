@@ -23,7 +23,7 @@ function App(){
 			console.log("models", models)
 			
 			var epNetwork = EndPointForm();			
-			selection.select("#pnl-create-network").datum(generators)
+			selection.select("#modal-create-network").datum(generators)
 			.call(epNetwork);
 			
 			epNetwork.submit = function(e){
@@ -35,10 +35,8 @@ function App(){
 						app.experiment.getGraph(function(n){
 							dispatch.loadedNetwork(n);
 							
-							selection.select("#pnl-create-model")
-							.style("display","block")
 							var epModel = EndPointForm().type("model");
-							selection.select("#pnl-create-model").datum(models)
+							selection.select("#modal-create-model").datum(models)
 							.call(epModel);
 							epModel.submit = function(e){
 								console.log(epModel.parameters());

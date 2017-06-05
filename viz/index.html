@@ -39,18 +39,60 @@
 	</head>
 	<body class="container">
 		<h1 id="ndlib_exploratory">NDLib Exploratory</h1>
+		<div class="row" id="btn-toolbar">
+			<button type="button" class="btn btn-default" id="btn-create-network" data-toggle="modal" data-target="#modal-create-network"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Create Network</button>
+			<button type="button" class="btn btn-default" id="btn-create-model" data-toggle="modal" data-target="#modal-create-model"><span class="glyphicon glyphicon-modal-window" aria-hidden="true"></span> Add Model</button>
+		</div>
+		
+		
+		<div class="modal fade" id="modal-create-network" tabIndex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4>Create Network</h4>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="cmb-network-selection">
+							
+							</div>
+							<div class="network-parameters">
+							
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+		<div class="modal fade" id="modal-create-model" tabIndex="-1" role="dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h4>Add a Model</h4>
+					</div>
+					<div class="modal-body">
+						<form>
+							<div class="cmb-model-selection">
+							
+							</div>
+							<div class="model-parameters">
+							
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		
+		
 		<div class="panel panel-default" id="pnl-create-network" >
 			<div class="panel-heading">Create experiment</div>
 			<div class="panel-body">
 				<div class="btn-group" id="btn-create-network">
-					<form>
-						<div class="cmb-network-selection">
-							
-						</div>
-						<div class="network-parameters">
-							
-						</div>
-					</form>
+					
 				</div>
 			</div>
 		</div><!-- End panel create experiment-->
@@ -62,14 +104,6 @@
 				<div class="panel-heading">Create Model</div>
 				<div class="panel-body">
 					<div class="btn-group" id="btn-create-model">
-						<form>
-							<div class="cmb-model-selection">
-							
-							</div>
-							<div class="model-parameters">
-							
-							</div>
-						</form>
 					</div>
 				</div>
 			</div><!-- End panel create experiment-->
