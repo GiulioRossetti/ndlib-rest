@@ -67,6 +67,27 @@ function App(){
 	
 	
 	
+	me.modelDescriptor = {
+		SI:{
+			state_labels:{
+				0:"Susceptible",
+				1:"Infected"
+			}
+		},
+		SIR:{
+			state_labels:{
+				0:"Susceptible",
+				1:"Infected",
+				2:"Recovered"
+			}
+		},
+		
+	}
+	
+	
+	
+	
+	
 	
 	return me;
 }
