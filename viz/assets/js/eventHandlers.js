@@ -75,7 +75,10 @@ dispatch.on("executedIterations.timeline", function(data){
 			console.log(modelDescriptor);
 			var sums = {};
 			d3.keys(modelDescriptor["state_labels"]).forEach(function(s){
-				sums[s] = d3.range(numIterations).map(function(){return 0})
+				sums[s] = {
+					label: modelDescriptor.state_labels[s],
+					values: d3.range(numIterations).map(function(){return 0})
+				}
 			});
 			console.log("sums+___",sums);
 			network.nodes.filter(function(n,i){return true})
@@ -85,10 +88,10 @@ dispatch.on("executedIterations.timeline", function(data){
 					var segnode = d3.range(e.i, nextPos);
 					// console.log(e.s,segnode);
 					segnode.forEach(function(p){
-						sums[e.s][p]++;
+						sums[e.s].values[p]++;
 					})
 				})
-			})
+			});
 			var mv = app.modelViewers[model];
 			mv.trendData(sums);
 			

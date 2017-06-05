@@ -39,8 +39,7 @@ function ModelView(){
 			.attr("class","panel-body stats");
 			;
 		}
-		
-		
+
 		panel.select("div.panel-heading")
 			.text("Model: " + row.datum().key);
 		
@@ -65,12 +64,18 @@ function ModelView(){
 		
 		console.log("sums", trendData);
 
-		var chart = nv.models.lineChart();
+		var chart = nv.models.lineWithFocusChart()
+			.useInteractiveGuideline(true);
+			chart.focus.dispatch.on("brush", function(extent){
+				console.log(extent);
+				console.log(this);
+			})
 		panel.select("div.charts .line-chart svg")
 		.datum(d3.entries(trendData).map(function(d){
 			return {
-				key: d.key,
-				values: d.value.map(function(v,i){
+				key: d.value.label,
+				label: d.value.label,
+				values: d.value.values.map(function(v,i){
 					return {x:i, y:v}
 				}),
 				// color: nodeColor(d.key)
