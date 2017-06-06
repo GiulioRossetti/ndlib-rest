@@ -1,5 +1,5 @@
-var dispatch = d3.dispatch("createdExperiment","loadedNetwork", "createdModel", "executedIterations");
-var netviz = NetworkLayout();
+var dispatch = d3.dispatch("createdExperiment","loadedNetwork", "createdModel", "executedIterations", "selectIteration");
+
 
 
 dispatch.on("createdExperiment.form",function(){
@@ -49,7 +49,7 @@ dispatch.on("createdModel.experiment", function(){
 dispatch.on("executedIterations.timeline", function(data){
 
 		console.log("iterations",data);
-		var network = netviz.graph();
+		var network = app.networkViz.graph();
 		console.log("network", network);
 		// for each model
 		d3.entries(data).forEach(function(m){
@@ -101,10 +101,14 @@ dispatch.on("executedIterations.timeline", function(data){
 
 })
 
+dispatch.on("selectIteration", function(i, nodeColor, model){
+	app.networkViz.updateIteration(i, nodeColor, model);
+});
+
 
 dispatch.on("loadedNetwork.network", function(network){
 
 	d3.select("#network-viz")
 	.datum(network)
-	.call(netviz);
+	.call(app.networkViz);
 })

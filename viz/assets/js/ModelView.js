@@ -20,7 +20,7 @@ function ModelView(){
 			var body = panel.append("div")
 				.attr("class","panel-body")
 				.append("div")
-				.text("model descriptor");
+				.text("Mouve over the chart to select a time instant of the simulation");
 				
 			// charts	
 			var charts = panel.append("div")
@@ -70,8 +70,11 @@ function ModelView(){
 			// 	console.log(extent);
 			// 	console.log(this);
 			// });
-			chart.interactiveLayer.dispatch.on("elementClick.test", function(e){
-				console.log(e);
+			chart.interactiveLayer.dispatch.on("elementMousemove.test", function(e){
+				var nodeColor = app.modelDescriptor[panel.datum().key.split("_")[0]].nodeColor;
+				
+				dispatch.selectIteration(Math.round(e.pointXValue), nodeColor, panel.datum());
+				
 			})
 		panel.select("div.charts .line-chart svg")
 		.datum(d3.entries(trendData).map(function(d){

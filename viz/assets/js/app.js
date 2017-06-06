@@ -3,7 +3,7 @@ function App(){
 	me.modelViewers ={};
 	
 	me.experiment = Experiment();
-	
+	me.networkViz = NetworkLayout();
 	function me(selection){
 		console.log("Main APP");
 		console.log("API Server", API_HOST);
@@ -72,14 +72,20 @@ function App(){
 			state_labels:{
 				0:"Susceptible",
 				1:"Infected"
-			}
+			},
+			nodeColor: d3.scale.category20()
+				.domain([0,1])
+				// .range(colorbrewer['RdYlBu'][3])
 		},
 		SIR:{
 			state_labels:{
 				0:"Susceptible",
 				1:"Infected",
 				2:"Recovered"
-			}
+			},
+			nodeColor: d3.scale.category20()
+				.domain([0,1,2])
+				// .range(colorbrewer['RdYlBu'][3])
 		},
 		
 	}

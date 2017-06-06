@@ -12,10 +12,7 @@ function NetworkLayout(){
 	var width;
 	var height;
 	var graph;
-	var model = "SIR_0";
-	var nodeColor = d3.scale.ordinal()
-		.domain([0,1,2])
-	.range(colorbrewer['RdYlBu'][3]);
+
 	
 	function me(selection){
 
@@ -115,7 +112,7 @@ function NetworkLayout(){
 		context.fill();
 	}
 	
-	function updateIteration(i){
+	me.updateIteration = function(i, nodeColor, model){
 		context.clearRect(0, 0, width, height);
 
 		// draw links
@@ -137,9 +134,9 @@ function NetworkLayout(){
 			context.beginPath();
 			var selected = graph.nodes
 			.filter(function(n){
-				return  getNodeStatusAtIteration(n,i)== c
+				return  getNodeStatusAtIteration(n,i, model.key)== c
 			});
-			console.log("Selected " + c, selected.length);
+			// console.log("Selected " + c, selected.length);
 			selected.forEach(function(d) {
 				context.moveTo(d.x, d.y);
 				context.arc(d.x, d.y, 4.5, 0, 2 * Math.PI);
@@ -148,7 +145,7 @@ function NetworkLayout(){
 		})
 	}
 	
-	function getNodeStatusAtIteration(n,i){
+	function getNodeStatusAtIteration(n,i, model){
 		return n.events[model]
 				.filter(function(e){
 					return e.i <= i
