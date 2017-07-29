@@ -131,9 +131,17 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print "Load SIS: OK"
 
+        res = put('%s/api/SEIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'alpha': 0.05, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print "Load SEIS: OK"
+
         res = put('%s/api/SIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'token': token5})
         self.assertEqual(res.status_code, 200)
         print "Load SIR: OK"
+
+        res = put('%s/api/SEIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'alpha': 0.05, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print "Load SEIR: OK"
 
         res = put('%s/api/Threshold' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
@@ -156,7 +164,7 @@ class RESTTest(unittest.TestCase):
         print "Load Independent Cascades: OK"
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token5}).json()
-        self.assertEqual(len(res['Models']), 8)
+        self.assertEqual(len(res['Models']), 10)
         print "Display Experiment Resources: OK"
 
         res = delete('%s/api/Experiment' % base, data={'token': token5})
@@ -226,7 +234,6 @@ class RESTTest(unittest.TestCase):
         print "Experiment Reset: OK"
 
         res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token6}).json()
-        print res
         self.assertEqual(len(res.keys()), 8)
         print "Iteration Bunch: OK"
 
@@ -303,7 +310,7 @@ class RESTTest(unittest.TestCase):
         self.assertNotEquals(res.keys(), 0)
         print "Get Graph: OK"
 
-        conf = {'nodes': {'threshold': {}, 'profile': {}}, 'edges': [], 'model': {'initial_infected': []}}
+        conf = {'nodes': {'threshold': {}, 'profile': {}}, 'edges': [], 'model': {}, 'status': {}}
         nds = []
         for n in res['nodes']:
             nid = n['id']
@@ -320,7 +327,7 @@ class RESTTest(unittest.TestCase):
             conf['edges'].append({'source': u, 'target': v, 'weight': w})
 
         infected = np.random.choice(nds, len(nds)/10)
-        conf['model']['initial_infected'] = list(infected)
+        conf['status']['Infected'] = list(infected)
         cs = json.dumps(conf)
 
         res = put('%s/api/Configure' % base, data={'status': cs, 'models': '', 'token': token})
