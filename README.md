@@ -1,6 +1,6 @@
 # NDlib-Rest
 
-![NDlib logo](https://github.com/GiulioRossetti/ndlib-rest/blob/master/static/images/logo-rest.png)
+![NDlib logo](https://github.com/GiulioRossetti/ndlib-rest/blob/ndlib-rest-2.0/static/images/logo-rest.png)
 
 
 Network Diffusion Library REST Service.
