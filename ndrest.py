@@ -7,19 +7,27 @@ from utils import generators
 from flask_cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
-from ndlib import ThresholdModel as tm
-from ndlib import SIRModel as sir
-from ndlib import SIModel as si
-from ndlib import SISModel as sis
-from ndlib import ProfileModel as ac
-from ndlib import ProfileThresholdModel as pt
-from ndlib import IndependentCascadesModel as ic
-from ndlib import VoterModel as vm
-from ndlib import QVoterModel as qvm
-from ndlib import MajorityRuleModel as mrm
-from ndlib import SznajdModel as sm
-from ndlib import KerteszThresholdModel as jt
-from ndlib import CognitiveOpDynModel as cop
+
+import ndlib.models.ModelConfig as mc
+
+import ndlib.models.epidemics.ThresholdModel as tm
+import ndlib.models.epidemics.SIRModel as sir
+import ndlib.models.epidemics.SIModel as si
+import ndlib.models.epidemics.SISModel as sis
+import ndlib.models.epidemics.SEIRModel as seir
+import ndlib.models.epidemics.SEISModel as seis
+import ndlib.models.epidemics.ProfileModel as ac
+import ndlib.models.epidemics.ProfileThresholdModel as pt
+import ndlib.models.epidemics.IndependentCascadesModel as ic
+import ndlib.models.epidemics.KerteszThresholdModel as jt
+
+import ndlib.models.opinions.VoterModel as vm
+import ndlib.models.opinions.QVoterModel as qvm
+import ndlib.models.opinions.MajorityRuleModel as mrm
+import ndlib.models.opinions.SznajdModel as sm
+import ndlib.models.opinions.CognitiveOpDynModel as cop
+
+
 import json
 import shutil
 import networkx as nx
@@ -57,6 +65,33 @@ handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 app.logger.addHandler(handler)
+
+
+def update_model(md, status):
+    config = mc.Configuration()
+
+    status = status['configuration']
+    # nodes conf
+    for cn, cc in status['nodes'].iteritems():
+        for n, v in cc.iteritems():
+            config.add_node_configuration(cn, int(n), float(v))
+
+    # edges conf
+    for ce in status['edges']:
+        config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
+
+    # model conf
+    for k, v in md.params['model'].iteritems():
+        config.add_model_parameter(k, v)
+    for me, mv in status['model'].iteritems():
+        config.add_model_parameter(me, float(mv))
+
+    # status conf
+    for se, sv in status['status'].iteritems():
+        if se in md.available_statuses:
+            config.add_model_initial_configuration(se, map(int, sv))
+    md.set_initial_status(config)
+    return md
 
 
 def load_data(path):
@@ -149,7 +184,6 @@ class ExperimentStatus(Resource):
                         post('http://localhost:5000/api/ExperimentStatus')
         """
         token = str(request.form['token'])
-
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
@@ -163,11 +197,8 @@ class ExperimentStatus(Resource):
             db_net.close()
         except:
             return {'Message': 'No resources attached to this token'}, not_found
-
         try:
-
             db_model = load_data("data/db/%s/models" % token)
-
             exp = db_model['models']
             model_names = exp.keys()
             db_model.close()
@@ -175,9 +206,8 @@ class ExperimentStatus(Resource):
             models = {}
             for model in model_names:
                 db_model = load_data("data/db/%s/%s" % (token, model))
-
                 exp = db_model
-                models[model] = exp[model].getinfo()
+                models[model] = exp[model].get_info()
                 db_model.close()
             result['Models'] = models
             return result
@@ -198,7 +228,6 @@ class ExperimentStatus(Resource):
                         put('http://localhost:5000/api/ExperimentStatus', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
@@ -220,7 +249,7 @@ class ExperimentStatus(Resource):
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
                 md.reset()
-                md.set_initial_status()
+                md.reset()
                 db_mod[model_name] = md
                 db_mod.close()
         except:
@@ -989,7 +1018,28 @@ class Configure(Resource):
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
-                md.change_initial_status(status)
+                config = mc.Configuration()
+
+                # nodes conf
+                for cn, cc in status['nodes'].iteritems():
+                    for n, v in cc.iteritems():
+                        config.add_node_configuration(cn, int(n), float(v))
+
+                # edges conf
+                for ce in status['edges']:
+                    config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
+
+                # model conf
+                for k, v in md.params['model'].iteritems():
+                    config.add_model_parameter(k, v)
+                for me, mv in status['model'].iteritems():
+                    config.add_model_parameter(me, float(mv))
+
+                # status conf
+                for se, sv in status['status'].iteritems():
+                    config.add_model_initial_configuration(se, map(int, sv))
+
+                md.set_initial_status(config)
                 db_mod[model_name] = md
                 db_mod.close()
 
@@ -1034,23 +1084,35 @@ class Threshold(Resource):
         db_net.close()
 
         model = tm.ThresholdModel(g)
-        conf = {'model': {'percentage_infected': float(infected)}}
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
 
         if float(threshold) > 0:
-            conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][n] = float(threshold)
-
-        model.set_initial_status(conf)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
+                config.add_node_configuration("threshold", n, float(threshold))
+        model.set_initial_status(config)
 
         db_model = load_data("data/db/%s/models" % token)
 
+        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
+            db_conf = load_data("data/db/%s/configuration" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'Threshold' == x.split("_")[0]])
+                db_name = 'Threshold_%s' % mid
+            else:
+                db_name = "Threshold_0"
+
+            mod = update_model(model, db_conf)
+            db_model['models'][db_name] = mod
+            db_model.close()
+
         try:
+            db_model = load_data("data/db/%s/models" % token)
+
             r = db_model['models']
             keys = r.keys()
 
@@ -1108,14 +1170,33 @@ class IndependentCascades(Resource):
         db_net.close()
 
         model = ic.IndependentCascadesModel(g)
-        conf = {'model': {'percentage_infected': float(infected)}}
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
 
-        model.set_initial_status(conf)
+        # @todo: partial parameter passsing check
+        threshold = 0.1
+        for e in g.edges():
+            config.add_edge_configuration("threshold", e, threshold)
+
+        model.set_initial_status(config)
+
+        db_model = load_data("data/db/%s/models" % token)
 
         if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'IndependentCascades' == x.split("_")[0]])
+                db_name = 'IndependentCascades_%s' % mid
+            else:
+                db_name = "IndependentCascades_0"
+
+            mod = update_model(model, db_conf)
+            db_model['models'][db_name] = mod
+            db_model.close()
 
         db_model = load_data("data/db/%s/models" % token)
 
@@ -1177,13 +1258,30 @@ class SIR(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = sir.SIRModel(g, {'beta': float(beta), 'gamma': float(gamma)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = sir.SIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SIR' == x.split("_")[0]])
+                    db_name = 'SIR_%s' % mid
+                else:
+                    db_name = "SIR_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1243,13 +1341,29 @@ class SI(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = si.SIModel(g, {'beta': float(beta)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = si.SIModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SI' == x.split("_")[0]])
+                    db_name = 'SI_%s' % mid
+                else:
+                    db_name = "SI_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1311,13 +1425,30 @@ class SIS(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = sis.SISModel(g, {'beta': float(beta), 'lambda': float(lamb)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = sis.SISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SIS' == x.split("_")[0]])
+                    db_name = 'SIS_%s' % mid
+                else:
+                    db_name = "SIS_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1346,6 +1477,182 @@ class SIS(Resource):
         return {'Message': 'Resource created'}, success
 
 
+class SEIS(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/SEIS SEIS
+            @ApiDescription Instantiate a SEIS Model on the network bound to the provided token.
+            @apiVersion 1.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}}  lambda    Recovery rate.
+            @apiParam {Number{0-1}}  alpha   Incubation period.
+            @apiName seis
+            @apiGroup Models
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/SEIS', data={'beta': beta, 'lambda': lambda, 'alpha': alpha, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            lamb = request.form['lambda']
+            alpha = request.form['alpha']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = seis.SEISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            config.add_model_parameter('alpha', float(alpha))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
+
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SEIS' == x.split("_")[0]])
+                    db_name = 'SEIS_%s' % mid
+                else:
+                    db_name = "SEIS_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
+
+            db_model = load_data("data/db/%s/models" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'SEIS' == x.split("_")[0]])
+                db_name = 'SEIS_%s' % mid
+            else:
+                db_name = "SEIS_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_sis = load_data("data/db/%s/%s" % (token, db_name))
+
+            r = db_sis
+            r[db_name] = model
+            db_sis = r
+            db_sis.close()
+
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class SEIR(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/SEIR SEIR
+            @ApiDescription Instantiate a SEIR Model on the network bound to the provided token.
+            @apiVersion 1.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}}  gamma    Recovery rate.
+            @apiParam {Number{0-1}}  alpha   Incubation period.
+            @apiName seir
+            @apiGroup Models
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/SEIS', data={'beta': beta, 'gamma': gamma, 'alpha': alpha, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            gamma = request.form['gamma']
+            alpha = request.form['alpha']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = seir.SEIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            config.add_model_parameter('alpha', float(alpha))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
+
+            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
+                db_conf = load_data("data/db/%s/configuration" % token)
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SEIR' == x.split("_")[0]])
+                    db_name = 'SEIR_%s' % mid
+                else:
+                    db_name = "SEIR_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
+
+            db_model = load_data("data/db/%s/models" % token)
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'SEIR' == x.split("_")[0]])
+                db_name = 'SEIR_%s' % mid
+            else:
+                db_name = "SEIR_0"
+            r[db_name] = {}
+            db_model['models'] = r
+            db_model.close()
+
+            db_sis = load_data("data/db/%s/%s" % (token, db_name))
+
+            r = db_sis
+            r[db_name] = model
+            db_sis = r
+            db_sis.close()
+
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
 class Profile(Resource):
 
     def put(self):
@@ -1356,7 +1663,8 @@ class Profile(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} profile    A fixed profile value for all the nodes: if not specified the
                                                 profile will be assigned using a normal distribution.
-
+            @apiParam {Number{0-1}} blocked   Probability for a node that chose to not adopt to became blocked
+            @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profile
             @apiGroup Models
@@ -1383,18 +1691,45 @@ class Profile(Resource):
             db_net.close()
 
             model = ac.ProfileModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
+
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
 
             if float(profile) > 0:
-                conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][n] = float(profile)
-            model.set_initial_status(conf)
+                    config.add_node_configuration("profile", n, float(profile))
+
+            blocked = 0
+            if 'blocked' in request.form and request.form['blocked'] != "":
+                blocked = float(request.form['blocked'])
+
+            config.add_model_parameter('blocked', float(blocked))
+
+            adopter_rate = 0
+            if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
+                adopter_rate = float(request.form['adopter_rate'])
+
+            config.add_model_parameter('adopter_rate', float(adopter_rate))
+
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'Profile' == x.split("_")[0]])
+                    db_name = 'Profile_%s' % mid
+                else:
+                    db_name = "Profile_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1435,6 +1770,8 @@ class ProfileThreshold(Resource):
                                                 profile will be assigned using a normal distribution.
             @apiParam {Number{0-1}} threshold    A fixed threshold value for all the nodes: if not specified the
                                                 thresholds will be assigned using a normal distribution.
+            @apiParam {Number{0-1}} blocked   Probability for a node that chose to not adopt to became blocked
+            @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profilethreshold
             @apiGroup Models
@@ -1465,28 +1802,48 @@ class ProfileThreshold(Resource):
             db_net.close()
 
             model = pt.ProfileThresholdModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
 
             if float(profile) > 0:
-                conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][n] = float(profile)
+                    config.add_node_configuration("profile", n, float(profile))
 
             if float(threshold) > 0:
-                if 'nodes' not in conf:
-                    conf['nodes'] = {'threshold': {}}
-                else:
-                    conf['nodes']['threshold'] = {}
-
                 for n in g.nodes():
-                    conf['nodes']['threshold'][n] = float(threshold)
+                    config.add_node_configuration("threshold", n, float(profile))
 
-            model.set_initial_status(conf)
+            blocked = 0
+            if 'blocked' in request.form and request.form['blocked'] != "":
+                blocked = float(request.form['blocked'])
+
+            config.add_model_parameter('blocked', float(blocked))
+
+            adopter_rate = 0
+            if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
+                adopter_rate = float(request.form['adopter_rate'])
+
+            config.add_model_parameter('adopter_rate', float(adopter_rate))
+
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'ProfileThreshold' == x.split("_")[0]])
+                    db_name = 'ProfileThreshold_%s' % mid
+                else:
+                    db_name = "ProfileThreshold_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1545,14 +1902,27 @@ class Voter(Resource):
             db_net.close()
 
             model = vm.VoterModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            model.set_initial_status(conf)
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'VoterModel' == x.split("_")[0]])
+                    db_name = 'VoterModel_%s' % mid
+                else:
+                    db_name = "VoterModel_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1612,15 +1982,29 @@ class QVoter(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = qvm.QVoterModel(g, {'q': q})
-            conf = {'model': {'percentage_infected': float(infected)}}
+            model = qvm.QVoterModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter("q", q)
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            model.set_initial_status(conf)
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
+                    db_name = 'QVoterModel_%s' % mid
+                else:
+                    db_name = "QVoterModel_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1680,15 +2064,29 @@ class MaJorityRule(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = mrm.MajorityRuleModel(g, {'q': q})
-            conf = {'model': {'percentage_infected': float(infected)}}
+            model = mrm.MajorityRuleModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter("q", q)
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            model.set_initial_status(conf)
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'MajorityRule' == x.split("_")[0]])
+                    db_name = 'MajorityRule_%s' % mid
+                else:
+                    db_name = "MajorityRule_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1748,14 +2146,28 @@ class Sznajd(Resource):
             db_net.close()
 
             model = sm.SznajdModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
 
-            model.set_initial_status(conf)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
+
+            db_model = load_data("data/db/%s/models" % token)
 
             if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
                 db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+
+                r = db_model['models']
+                keys = r.keys()
+
+                if len(keys) > 0:
+                    mid = len([int(x.split("_")[1]) for x in keys if 'SznajdModel' == x.split("_")[0]])
+                    db_name = 'SznajdModel_%s' % mid
+                else:
+                    db_name = "SznajdModel_0"
+
+                mod = update_model(model, db_conf)
+                db_model['models'][db_name] = mod
+                db_model.close()
 
             db_model = load_data("data/db/%s/models" % token)
 
@@ -1828,21 +2240,35 @@ class KerteszThreshold(Resource):
         g = db_net['net']['g']
         db_net.close()
 
-        model = jt.KerteszThresholdModel(g, {'adopter_rate': adopter_rate, 'blocked': blocked})
-
-        conf = {'model': {'percentage_infected': float(infected)}}
+        model = jt.KerteszThresholdModel(g)
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', infected)
+        config.add_model_parameter('adopter_rate', adopter_rate)
+        config.add_model_parameter('percentage_blocked', blocked)
 
         if float(threshold) > 0:
-            conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][n] = float(threshold)
+                config.add_node_configuration("threshold", n, float(threshold))
 
-        model.set_initial_status(conf)
+        model.set_initial_status(config)
+
+        db_model = load_data("data/db/%s/models" % token)
 
         if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'KerteszThreshold' == x.split("_")[0]])
+                db_name = 'KerteszThreshold_%s' % mid
+            else:
+                db_name = "KerteszThreshold_0"
+
+            mod = update_model(model, db_conf)
+            db_model['models'][db_name] = mod
+            db_model.close()
 
         db_model = load_data("data/db/%s/models" % token)
 
@@ -1935,19 +2361,37 @@ class CognitiveOpinionDynamic(Resource):
         g = db_net['net']['g']
         db_net.close()
 
-        model = cop.CognitiveOpDynModel(g, {'I': I,
-                                            'B_range_min': B_range_min, 'B_range_max': B_range_max,
-                                            'T_range_min': T_range_min, 'T_range_max': T_range_max,
-                                            'R_fraction_negative': R_fraction_negative,
-                                            'R_fraction_neutral': R_fraction_neutral,
-                                            'R_fraction_positive': R_fraction_positive}
-                                        )
-        model.set_initial_status()
+        model = cop.CognitiveOpDynModel(g)
+
+        config = mc.Configuration()
+        config.add_model_parameter("I", I)
+        config.add_model_parameter("B_range_min", B_range_min)
+        config.add_model_parameter("B_range_max", B_range_max)
+        config.add_model_parameter("T_range_min", T_range_min)
+        config.add_model_parameter("T_range_max", T_range_max)
+        config.add_model_parameter("R_fraction_negative", R_fraction_negative)
+        config.add_model_parameter("R_fraction_neutral", R_fraction_neutral)
+        config.add_model_parameter("R_fraction_positive", R_fraction_positive)
+        config.add_model_parameter('percentage_infected', 0.1)
+        model.set_initial_status(config)
+
+        db_model = load_data("data/db/%s/models" % token)
 
         if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
             db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
+
+            r = db_model['models']
+            keys = r.keys()
+
+            if len(keys) > 0:
+                mid = len([int(x.split("_")[1]) for x in keys if 'CognitiveOpinionDynamic' == x.split("_")[0]])
+                db_name = 'CognitiveOpinionDynamic_%s' % mid
+            else:
+                db_name = "CognitiveOpinionDynamic_0"
+
+            mod = update_model(model, db_conf)
+            db_model['models'][db_name] = mod
+            db_model.close()
 
         db_model = load_data("data/db/%s/models" % token)
 
@@ -2056,13 +2500,13 @@ class Iteration(Resource):
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-                iteration, status = md.iteration()
+                its = md.iteration(node_status=True)
 
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()
 
-                results[model_name] = {'iteration': iteration, 'status': status}
+                results[model_name] = {'iteration': its['iteration'], 'status': its['status']}
         except:
            return {'Message': 'Parameter error'}, bad_request
 
@@ -2240,11 +2684,12 @@ class Exploratory(Resource):
                 db_net = r
                 db_net.close()
 
-                conf = {}
+                conf = {'nodes': {}, 'edges': {}, 'model': {}, 'status': {}}
 
                 # Read Configuration
                 if os.path.exists("%s/nodes.csv" % base_path):
-                    conf = {'nodes': {'profile': {}, 'threshold': {}}, 'edges': []}
+                    conf['nodes']['profile'] = {} # {'profile': {}, 'threshold': {}}, 'edges': []}
+                    conf['nodes']['threshold'] = {}
                     f = open("%s/nodes.csv" % base_path)
                     for l in f:
                         l = l.rstrip().split(",")
@@ -2252,20 +2697,23 @@ class Exploratory(Resource):
                         conf['nodes']['profile'][int(l[0])] = float(l[2])
 
                 if os.path.exists("%s/nodes_initial_status.csv" % base_path):
-                    conf['model'] = {}
+                    conf['status'] = {'Infected': [], 'Blocked': []}
                     f = open("%s/nodes_initial_status.csv" % base_path)
                     for l in f:
                         l = l.rstrip().split(",")
                         node = int(l[0])
                         nstatus = int(l[1])
                         if nstatus == 1:
-                            if 'infected_nodes' not in conf['model']:
-                                conf['model']['infected_nodes'] = {}
-                            conf['model']['infected_nodes'][node] = nstatus
+                            # if 'Infected' not in conf['status']:
+                            #    conf['status']['Infected'] = []
+                            conf['status']['Infected'].append(node)
+
+                            # conf['model']['infected_nodes'][node] = nstatus
+
                         if nstatus == -1:
-                            if 'blocked' not in conf['model']:
-                                conf['model']['blocked'] = {}
-                            conf['model']['blocked'][node] = nstatus
+                            # if 'Blocked' not in conf['status']:
+                            #     conf['status']['Blocked'] = []
+                            conf['status']['Blocked'].append(node)
 
                 if os.path.exists("%s/edges.csv" % base_path):
                     f = open("%s/edges.csv" % base_path)
@@ -2327,6 +2775,8 @@ api.add_resource(KerteszThreshold, '/api/KerteszThreshold')
 api.add_resource(SIR, '/api/SIR')
 api.add_resource(SI, '/api/SI')
 api.add_resource(SIS, '/api/SIS')
+api.add_resource(SEIS, '/api/SEIS')
+api.add_resource(SEIR, '/api/SEIR')
 api.add_resource(Profile, '/api/Profile')
 api.add_resource(ProfileThreshold, '/api/ProfileThreshold')
 api.add_resource(CognitiveOpinionDynamic, '/api/CognitiveOpinionDynamic')
@@ -2338,7 +2788,6 @@ api.add_resource(Experiment, '/api/Experiment')
 api.add_resource(ExperimentStatus, '/api/ExperimentStatus')
 api.add_resource(Iteration, '/api/Iteration')
 api.add_resource(IterationBunch, '/api/IterationBunch')
-# api.add_resource(CompleteRun, '/api/CompleteRun')
 api.add_resource(Exploratory, '/api/Exploratory')
 api.add_resource(UploadNetwork, '/api/UploadNetwork')
 

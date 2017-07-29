@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 - Website
     - REST tutorial
     - Python client tutorial
+    
+## [1.0.0]
+### Added
+- Models
+	- SEIS
+	- SEIR
+
+### Updated
+- Diffusion Library update: ndlib 2.1.0
+
 
 ## [0.9.2]
 ### Added
