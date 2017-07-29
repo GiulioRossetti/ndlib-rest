@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import Flask, request
 import shelve
 import dumbdbm
@@ -70,28 +71,71 @@ app.logger.addHandler(handler)
 def update_model(md, status):
     config = mc.Configuration()
 
-    status = status['configuration']
     # nodes conf
-    for cn, cc in status['nodes'].iteritems():
-        for n, v in cc.iteritems():
-            config.add_node_configuration(cn, int(n), float(v))
+    if 'nodes' in status:
+        for cn, cc in status['nodes'].iteritems():
+            for n, v in cc.iteritems():
+                config.add_node_configuration(cn, int(n), float(v))
 
     # edges conf
-    for ce in status['edges']:
-        config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
+    if 'edges' in status:
+        for ce in status['edges']:
+            config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
 
     # model conf
     for k, v in md.params['model'].iteritems():
         config.add_model_parameter(k, v)
-    for me, mv in status['model'].iteritems():
-        config.add_model_parameter(me, float(mv))
+
+    if 'model' in status:
+        for me, mv in status['model'].iteritems():
+            config.add_model_parameter(me, float(mv))
 
     # status conf
-    for se, sv in status['status'].iteritems():
-        if se in md.available_statuses:
-            config.add_model_initial_configuration(se, map(int, sv))
+    if 'status' in status:
+        for se, sv in status['status'].iteritems():
+            if se in md.available_statuses:
+                config.add_model_initial_configuration(se, map(int, sv))
+
     md.set_initial_status(config)
     return md
+
+
+def config_model(token, model_name, model):
+
+    if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
+        db_model = load_data("data/db/%s/models" % token)
+        r = db_model['models']
+        keys = r.keys()
+
+        if len(keys) > 0:
+            mid = len([int(x.split("_")[1]) for x in keys if model_name == x.split("_")[0]])
+            db_name = '%s_%s' % (model_name, mid)
+        else:
+            db_name = "%s_0" % model_name
+
+        db_conf = load_data("data/db/%s/configuration" % token)
+        mod = update_model(model, db_conf)
+        db_model['models'][db_name] = mod
+        db_model.close()
+
+    db_model = load_data("data/db/%s/models" % token)
+    r = db_model['models']
+    keys = r.keys()
+
+    if len(keys) > 0:
+        mid = len([int(x.split("_")[1]) for x in keys if model_name == x.split("_")[0]])
+        db_name = '%s_%s' % (model_name, mid)
+    else:
+        db_name = "%s_0" % model_name
+    r[db_name] = {}
+    db_model['models'] = r
+    db_model.close()
+
+    db_md_conf = load_data("data/db/%s/%s" % (token, db_name))
+    r = db_md_conf
+    r[db_name] = model
+    db_md_conf = r
+    db_md_conf.close()
 
 
 def load_data(path):
@@ -1007,6 +1051,7 @@ class Configure(Resource):
 
         exp = db_models['models'].keys()
         db_models.close()
+
         try:
             ml = []
             if 'models' in request.form:
@@ -1019,33 +1064,11 @@ class Configure(Resource):
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
-                config = mc.Configuration()
-
-                # nodes conf
-                for cn, cc in status['nodes'].iteritems():
-                    for n, v in cc.iteritems():
-                        config.add_node_configuration(cn, int(n), float(v))
-
-                # edges conf
-                for ce in status['edges']:
-                    config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
-
-                # model conf
-                for k, v in md.params['model'].iteritems():
-                    config.add_model_parameter(k, v)
-                for me, mv in status['model'].iteritems():
-                    config.add_model_parameter(me, float(mv))
-
-                # status conf
-                for se, sv in status['status'].iteritems():
-                    config.add_model_initial_configuration(se, map(int, sv))
-
-                md.set_initial_status(config)
+                md = update_model(md, status)
                 db_mod[model_name] = md
                 db_mod.close()
-
         except:
-            return {'Message': 'Parameter error'}, bad_request
+            return {'Message': "Parameter error"}, bad_request
 
         return {"Message": "Configuration applied"}, success
 
@@ -1093,46 +1116,8 @@ class Threshold(Resource):
                 config.add_node_configuration("threshold", n, float(threshold))
         model.set_initial_status(config)
 
-        db_model = load_data("data/db/%s/models" % token)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'Threshold' == x.split("_")[0]])
-                db_name = 'Threshold_%s' % mid
-            else:
-                db_name = "Threshold_0"
-
-            mod = update_model(model, db_conf)
-            db_model['models'][db_name] = mod
-            db_model.close()
-
         try:
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'Threshold' == x.split("_")[0]])
-                db_name = 'Threshold_%s' % mid
-            else:
-                db_name = "Threshold_0"
-
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_threshold = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_threshold
-            r[db_name] = model
-            db_threshold = r
-            db_threshold.close()
+            config_model(token, "Threshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1179,45 +1164,8 @@ class IndependentCascades(Resource):
 
         model.set_initial_status(config)
 
-        db_model = load_data("data/db/%s/models" % token)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'IndependentCascades' == x.split("_")[0]])
-                db_name = 'IndependentCascades_%s' % mid
-            else:
-                db_name = "IndependentCascades_0"
-
-            mod = update_model(model, db_conf)
-            db_model['models'][db_name] = mod
-            db_model.close()
-
-        db_model = load_data("data/db/%s/models" % token)
-
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'IndependentCascades' == x.split("_")[0]])
-                db_name = 'IndependentCascades_%s' % mid
-            else:
-                db_name = "IndependentCascades_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_ic = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_ic
-            r[db_name] = model
-            db_ic = r
-            db_ic.close()
+            config_model(token, "IndependentCascades", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1264,45 +1212,7 @@ class SIR(Resource):
             config.add_model_parameter('gamma', float(gamma))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SIR' == x.split("_")[0]])
-                    db_name = 'SIR_%s' % mid
-                else:
-                    db_name = "SIR_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SIR' == x.split("_")[0]])
-                db_name = 'SIR_%s' % mid
-            else:
-                db_name = "SIR_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sir = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sir
-            r[db_name] = model
-            db_sir = r
-            db_sir.close()
-
+            config_model(token, "SIR", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1346,45 +1256,7 @@ class SI(Resource):
             config.add_model_parameter('beta', float(beta))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SI' == x.split("_")[0]])
-                    db_name = 'SI_%s' % mid
-                else:
-                    db_name = "SI_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SI' == x.split("_")[0]])
-                db_name = 'SI_%s' % mid
-            else:
-                db_name = "SI_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_si = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_si
-            r[db_name] = model
-            db_si = r
-            db_si.close()
-
+            config_model(token, "SI", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1431,45 +1303,7 @@ class SIS(Resource):
             config.add_model_parameter('lambda', float(lamb))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SIS' == x.split("_")[0]])
-                    db_name = 'SIS_%s' % mid
-                else:
-                    db_name = "SIS_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SIS' == x.split("_")[0]])
-                db_name = 'SIS_%s' % mid
-            else:
-                db_name = "SIS_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sis = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sis
-            r[db_name] = model
-            db_sis = r
-            db_sis.close()
-
+            config_model(token, "SIS", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1519,45 +1353,7 @@ class SEIS(Resource):
             config.add_model_parameter('alpha', float(alpha))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SEIS' == x.split("_")[0]])
-                    db_name = 'SEIS_%s' % mid
-                else:
-                    db_name = "SEIS_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SEIS' == x.split("_")[0]])
-                db_name = 'SEIS_%s' % mid
-            else:
-                db_name = "SEIS_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sis = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sis
-            r[db_name] = model
-            db_sis = r
-            db_sis.close()
-
+            config_model(token, "SEIS", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1607,45 +1403,7 @@ class SEIR(Resource):
             config.add_model_parameter('alpha', float(alpha))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SEIR' == x.split("_")[0]])
-                    db_name = 'SEIR_%s' % mid
-                else:
-                    db_name = "SEIR_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SEIR' == x.split("_")[0]])
-                db_name = 'SEIR_%s' % mid
-            else:
-                db_name = "SEIR_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sis = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sis
-            r[db_name] = model
-            db_sis = r
-            db_sis.close()
-
+            config_model(token, "SEIR", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1709,48 +1467,9 @@ class Profile(Resource):
                 adopter_rate = float(request.form['adopter_rate'])
 
             config.add_model_parameter('adopter_rate', float(adopter_rate))
-
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'Profile' == x.split("_")[0]])
-                    db_name = 'Profile_%s' % mid
-                else:
-                    db_name = "Profile_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'Profile' == x.split("_")[0]])
-                db_name = 'Profile_%s' % mid
-            else:
-                db_name = "Profile_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_profile = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_profile
-            r[db_name] = model
-            db_profile = r
-            db_profile.close()
-
+            config_model(token, "Profile", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1823,48 +1542,9 @@ class ProfileThreshold(Resource):
                 adopter_rate = float(request.form['adopter_rate'])
 
             config.add_model_parameter('adopter_rate', float(adopter_rate))
-
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'ProfileThreshold' == x.split("_")[0]])
-                    db_name = 'ProfileThreshold_%s' % mid
-                else:
-                    db_name = "ProfileThreshold_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'ProfileThreshold' == x.split("_")[0]])
-                db_name = 'ProfileThreshold_%s' % mid
-            else:
-                db_name = "ProfileThreshold_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_profile_threshold = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_profile_threshold
-            r[db_name] = model
-            db_profile_threshold = r
-            db_profile_threshold.close()
-
+            config_model(token, "ProfileThreshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1890,60 +1570,22 @@ class Voter(Resource):
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
+        infected = request.form['infected']
+        if infected == '':
+            infected = 0.05
+
+        db_net = load_data("data/db/%s/net" % token)
+
+        g = db_net['net']['g']
+        db_net.close()
+
+        model = vm.VoterModel(g)
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
+        model.set_initial_status(config)
+
         try:
-            infected = request.form['infected']
-            if infected == '':
-                infected = 0.05
-
-            db_net = load_data("data/db/%s/net" % token)
-
-            g = db_net['net']['g']
-            db_net.close()
-
-            model = vm.VoterModel(g)
-            config = mc.Configuration()
-            config.add_model_parameter('percentage_infected', float(infected))
-            model.set_initial_status(config)
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'VoterModel' == x.split("_")[0]])
-                    db_name = 'VoterModel_%s' % mid
-                else:
-                    db_name = "VoterModel_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'VoterModel' == x.split("_")[0]])
-                db_name = 'VoterModel_%s' % mid
-            else:
-                db_name = "VoterModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_voter = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_voter
-            r[db_name] = model
-            db_voter = r
-            db_voter.close()
-
+            config_model(token, "Voter", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1987,45 +1629,7 @@ class QVoter(Resource):
             config.add_model_parameter('percentage_infected', float(infected))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
-                    db_name = 'QVoterModel_%s' % mid
-                else:
-                    db_name = "QVoterModel_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
-                db_name = 'QVoterModel_%s' % mid
-            else:
-                db_name = "QVoterModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_qvoter = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_qvoter
-            r[db_name] = model
-            db_qvoter = r
-            db_qvoter.close()
-
+            config_model(token, "QVoterModel", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2069,45 +1673,7 @@ class MaJorityRule(Resource):
             config.add_model_parameter('percentage_infected', float(infected))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'MajorityRule' == x.split("_")[0]])
-                    db_name = 'MajorityRule_%s' % mid
-                else:
-                    db_name = "MajorityRule_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'MajorityRule' == x.split("_")[0]])
-                db_name = 'MajorityRule_%s' % mid
-            else:
-                db_name = "MajorityRule_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_majority_rule = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_majority_rule
-            r[db_name] = model
-            db_majority_rule = r
-            db_majority_rule.close()
-
+            config_model(token, "MajorityRule", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2150,45 +1716,7 @@ class Sznajd(Resource):
             config.add_model_parameter('percentage_infected', float(infected))
             model.set_initial_status(config)
 
-            db_model = load_data("data/db/%s/models" % token)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-
-                r = db_model['models']
-                keys = r.keys()
-
-                if len(keys) > 0:
-                    mid = len([int(x.split("_")[1]) for x in keys if 'SznajdModel' == x.split("_")[0]])
-                    db_name = 'SznajdModel_%s' % mid
-                else:
-                    db_name = "SznajdModel_0"
-
-                mod = update_model(model, db_conf)
-                db_model['models'][db_name] = mod
-                db_model.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SznajdModel' == x.split("_")[0]])
-                db_name = 'SznajdModel_%s' % mid
-            else:
-                db_name = "SznajdModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sznajd = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sznajd
-            r[db_name] = model
-            db_sznajd = r
-            db_sznajd.close()
-
+            config_model(token, "Sznajd", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2251,46 +1779,8 @@ class KerteszThreshold(Resource):
 
         model.set_initial_status(config)
 
-        db_model = load_data("data/db/%s/models" % token)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'KerteszThreshold' == x.split("_")[0]])
-                db_name = 'KerteszThreshold_%s' % mid
-            else:
-                db_name = "KerteszThreshold_0"
-
-            mod = update_model(model, db_conf)
-            db_model['models'][db_name] = mod
-            db_model.close()
-
-        db_model = load_data("data/db/%s/models" % token)
-
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'KerteszThreshold' == x.split("_")[0]])
-                db_name = 'KerteszThreshold_%s' % mid
-            else:
-                db_name = "KerteszThreshold_0"
-
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_thresholdk = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_thresholdk
-            r[db_name] = model
-            db_thresholdk = r
-            db_thresholdk.close()
+            config_model(token, "KerteszThreshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2374,46 +1864,8 @@ class CognitiveOpinionDynamic(Resource):
         config.add_model_parameter('percentage_infected', 0.1)
         model.set_initial_status(config)
 
-        db_model = load_data("data/db/%s/models" % token)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'CognitiveOpinionDynamic' == x.split("_")[0]])
-                db_name = 'CognitiveOpinionDynamic_%s' % mid
-            else:
-                db_name = "CognitiveOpinionDynamic_0"
-
-            mod = update_model(model, db_conf)
-            db_model['models'][db_name] = mod
-            db_model.close()
-
-        db_model = load_data("data/db/%s/models" % token)
-
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'CognitiveOpinionDynamic' == x.split("_")[0]])
-                db_name = 'CognitiveOpinionDynamic_%s' % mid
-            else:
-                db_name = "CognitiveOpinionDynamic_0"
-
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_cognitiveop = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_cognitiveop
-            r[db_name] = model
-            db_cognitiveop = r
-            db_cognitiveop.close()
+            config_model(token, "CognitiveOpinionDynamic", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -2751,6 +2203,7 @@ class Exploratory(Resource):
         return res, success
 
 
+api.add_resource(Configure, '/api/Configure')
 api.add_resource(Graph, '/api/GetGraph')
 api.add_resource(Generators, '/api/Generators')
 api.add_resource(Networks, '/api/Networks')
@@ -2761,7 +2214,6 @@ api.add_resource(ClusteredBarabasiAlbertGraph, '/api/Generators/ClusteredBarabas
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
 api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
 api.add_resource(IndependentCascades, '/api/IndependentCascades')
-api.add_resource(Configure, '/api/Configure')
 api.add_resource(Models, '/api/Models')
 api.add_resource(Threshold, '/api/Threshold')
 api.add_resource(KerteszThreshold, '/api/KerteszThreshold')
