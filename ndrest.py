@@ -985,7 +985,8 @@ class Configure(Resource):
                                 "weight": 0.7
                             },
                         ],
-                    'model': {'initial_infected': [node1, node3]}
+                    'model': {'model_parameter': parameter_value},
+                    'status': {'status_name': [node1, node2, node3]}
                 }
             @apiName configure
             @apiGroup Experiment
@@ -1144,9 +1145,8 @@ class IndependentCascades(Resource):
         """
             @api {put} /api/IndependentCascades Independent Cascades
             @ApiDescription Instantiate an Independent Cascades Model on the network bound to the provided token.
-                The edge threshold for each node is assumed equal to 1 divided its number of neighbors:
-                this behavior can be changed by using the <a href"#api-Experiment-configure">advanced
-                configuration</a> endpoint.
+                The edge threshold is assumed equal to 0.1 divided for all edges:
+                this behavior can be changed by using the <a href="#api-Experiment-configure"> advanced configuration </a> endpoint.
             @apiVersion 0.5.0
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
@@ -1173,7 +1173,6 @@ class IndependentCascades(Resource):
         config = mc.Configuration()
         config.add_model_parameter('percentage_infected', float(infected))
 
-        # @todo: partial parameter passsing check
         threshold = 0.1
         for e in g.edges():
             config.add_edge_configuration("threshold", e, threshold)
@@ -2688,7 +2687,7 @@ class Exploratory(Resource):
 
                 # Read Configuration
                 if os.path.exists("%s/nodes.csv" % base_path):
-                    conf['nodes']['profile'] = {} # {'profile': {}, 'threshold': {}}, 'edges': []}
+                    conf['nodes']['profile'] = {}
                     conf['nodes']['threshold'] = {}
                     f = open("%s/nodes.csv" % base_path)
                     for l in f:
@@ -2704,15 +2703,9 @@ class Exploratory(Resource):
                         node = int(l[0])
                         nstatus = int(l[1])
                         if nstatus == 1:
-                            # if 'Infected' not in conf['status']:
-                            #    conf['status']['Infected'] = []
                             conf['status']['Infected'].append(node)
 
-                            # conf['model']['infected_nodes'][node] = nstatus
-
                         if nstatus == -1:
-                            # if 'Blocked' not in conf['status']:
-                            #     conf['status']['Blocked'] = []
                             conf['status']['Blocked'].append(node)
 
                 if os.path.exists("%s/edges.csv" % base_path):
