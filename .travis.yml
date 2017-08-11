@@ -1,0 +1,24 @@
+sudo: required
+
+services:
+  - docker
+
+language: python
+python:
+  - "2.7"
+
+before_install:
+  - pip install pytest pytest-cov
+  - pip install coveralls
+
+install:
+  - pip install .
+  - pip install -r requirements.txt
+
+script:
+  - docker build -t ndlib_rest .
+  - docker run -d -i -p 5000:5000 ndlib_rest
+  - py.test --cov=./ --cov-config=.coveragerc
+
+after_success:
+  - coveralls
