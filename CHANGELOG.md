@@ -3,10 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unrealeased]
 ### Added
-- Website
-    - REST tutorial
-    - Python client tutorial
-    
+- Python 3 support
+     
 ## [1.0.0]
 ### Added
 - Models
