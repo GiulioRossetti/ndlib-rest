@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, request
 import shelve
+import past
 try:
     import dumbdbm
 except ImportError:
@@ -8,11 +9,13 @@ except ImportError:
 
 import glob
 import os
+import dynetx as dn
 from utils import generators
 from flask_cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
 
+import ndlib.models.DynamicDiffusionModel as DD
 import ndlib.models.ModelConfig as mc
 
 import ndlib.models.epidemics.ThresholdModel as tm
@@ -31,6 +34,10 @@ import ndlib.models.opinions.QVoterModel as qvm
 import ndlib.models.opinions.MajorityRuleModel as mrm
 import ndlib.models.opinions.SznajdModel as sm
 import ndlib.models.opinions.CognitiveOpDynModel as cop
+
+import ndlib.models.dynamic.DynSIModel as dsi
+import ndlib.models.dynamic.DynSIRModel as dsir
+import ndlib.models.dynamic.DynSISModel as dsis
 
 
 import json
@@ -380,7 +387,10 @@ class Graph(Resource):
 
             # if available:
             g = db_net['net']['g']
-            res = json_graph.node_link_data(g)
+            if isinstance(g, dn.DynGraph) or isinstance(g, dn.DynDiGraph):
+                res = dn.json_graph.node_link_data(g)
+            else:
+                res = json_graph.node_link_data(g)
             #else:
             #    db_net.close()
             #    return {"Message": "Dataset in read-only access."}, unavailable
@@ -411,6 +421,7 @@ class UploadNetwork(Resource):
             @apiParam {String}  token   The token.
             @apiParam {Boolean} directed If the graph is directed
             @apiParam {json} graph JSON description of the graph attributes.
+            @apiParam {Boolean} dynamic If the graph is a dynamic one.
             @apiParamExample {json} graph example:
                 {
                 "directed": false,
@@ -471,12 +482,19 @@ class UploadNetwork(Resource):
 
         try:
             g = None
+            dynamic = request.form['dynamic']
             if 'directed' in request.form:
-                directed = bool(request.form['directed'])
-            if directed:
-                g = json_graph.node_link_graph(data, directed=True)
+                directed = request.form['directed']
+            if directed == 'True':
+                if dynamic == 'True':
+                    g = dn.json_graph.node_link_graph(data, directed=True)
+                else:
+                    g = json_graph.node_link_graph(data, directed=True)
             else:
-                g = json_graph.node_link_graph(data, directed=False)
+                if dynamic == 'True':
+                    g = dn.json_graph.node_link_graph(data, directed=False)
+                else:
+                    g = json_graph.node_link_graph(data, directed=False)
 
             if len(g.nodes()) < min_number_of_nodes or len(g.nodes()) > max_number_of_nodes:
                 return {"Message": "Node number out fo range."}, bad_request
@@ -654,6 +672,7 @@ class ERGraph(Resource):
             @apiParam {Number{200..100000}} n    The number of nodes.
             @apiParam {Number{0-1}} p    The rewiring probability.
             @apiParam {Boolean} directed    If the graph should be directed.
+            @apiParam {Number} t Number of temporal snapshots
              If not specified an undirected graph will be generated.
             @apiName ERGraph
             @apiGroup Networks
@@ -675,9 +694,25 @@ class ERGraph(Resource):
             p = float(request.form['p'])
             directed = False
             if 'directed' in request.form:
-                directed = bool(request.form['directed'])
+                directed = request.form['directed']
+                if directed == 'True':
+                    directed = True
 
-            g = nx.erdos_renyi_graph(n, p, directed)
+            if 't' in request.form:
+                t = int(request.form['t'])
+                if directed:
+                    g = dn.DynDiGraph()
+                else:
+                    g = dn.DynGraph()
+            else:
+                t = 1
+
+            if t > 1:
+                for it in past.builtins.xrange(0, t):
+                    fl = nx.erdos_renyi_graph(n, p, directed)
+                    g.add_interactions_from(fl.edges(), it)
+            else:
+                g = nx.erdos_renyi_graph(n, p, directed)
 
             r = db_net
             r['net'] = {'g': g, 'name': 'ERGraph', 'params': {'n': n, 'p': p}}
@@ -687,6 +722,7 @@ class ERGraph(Resource):
             return {'Message': 'Parameter error'}, bad_request
 
         db_net.close()
+
         return {'Message': 'Resource created'}, success
 
 
@@ -1089,7 +1125,7 @@ class Threshold(Resource):
                                                 thresholds will be assigned using a normal distribution.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName threshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage, 'threshold': threshold})
         """
@@ -1140,7 +1176,7 @@ class IndependentCascades(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName indepcascades
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/IndependentCascades', data={'token': token, 'infected': percentage})
         """
@@ -1188,7 +1224,7 @@ class SIR(Resource):
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiParam {Number{0-1}} gamma    Recovery rate.
             @apiName sir
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
         """
@@ -1234,7 +1270,7 @@ class SI(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiName si
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SI', data={'beta': beta, 'infected': percentage, 'token': token})
         """
@@ -1279,7 +1315,7 @@ class SIS(Resource):
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiParam {Number{0-1}}  lambda    Recovery rate.
             @apiName sis
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
         """
@@ -1327,7 +1363,7 @@ class SEIS(Resource):
             @apiParam {Number{0-1}}  lambda    Recovery rate.
             @apiParam {Number{0-1}}  alpha   Incubation period.
             @apiName seis
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SEIS', data={'beta': beta, 'lambda': lambda, 'alpha': alpha, 'infected': percentage, 'token': token})
         """
@@ -1377,7 +1413,7 @@ class SEIR(Resource):
             @apiParam {Number{0-1}}  gamma    Recovery rate.
             @apiParam {Number{0-1}}  alpha   Incubation period.
             @apiName seir
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SEIS', data={'beta': beta, 'gamma': gamma, 'alpha': alpha, 'infected': percentage, 'token': token})
         """
@@ -1428,7 +1464,7 @@ class Profile(Resource):
             @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profile
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Profile', data={'token': token, 'infected': percentage})
         """
@@ -1496,7 +1532,7 @@ class ProfileThreshold(Resource):
             @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profilethreshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage, 'threshold': threshold, 'profile': profile})
         """
@@ -1565,7 +1601,7 @@ class Voter(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName voter
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Voter', data={'token': token, 'infected': percentage})
         """
@@ -1607,7 +1643,7 @@ class QVoter(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number} q Number of neighbours that affect the opinion of an agent
             @apiName qvoter
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/QVoter', data={'token': token, 'q': number,'infected': percentage})
         """
@@ -1651,7 +1687,7 @@ class MaJorityRule(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number{0-N}} q The group size.
             @apiName majority
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Majority', data={'token': token, 'infected': percentage, 'q': q})
         """
@@ -1695,7 +1731,7 @@ class Sznajd(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName sznajd
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Sznajd', data={'token': token, 'infected': percentage})
         """
@@ -1741,7 +1777,7 @@ class KerteszThreshold(Resource):
             @apiParam {Number {0-1}} adopter_rate    The adopter rate. Fixed probability of self-infection per iteration.
             @apiParam {Number {0-1}} blocked    Percentage of blocked nodes.
             @apiName KerteszThreshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/KerteszThreshold', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
         """
@@ -1811,7 +1847,7 @@ class CognitiveOpinionDynamic(Resource):
 
 
             @apiName CognitiveOpinionDynamic
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/CognitiveOpinionDynamic', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
         """
@@ -1875,8 +1911,160 @@ class CognitiveOpinionDynamic(Resource):
 
         return {'Message': 'Resource created'}, success
 
+######## Dynamic ##########
+
+
+class dSI(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/dSI DynSI
+            @ApiDescription Instantiate a SI Model on the dynamic network bound to the provided token.
+            @apiVersion 2.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiName dsi
+            @apiGroup Epidemics Dynamic Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/dSI', data={'beta': beta, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsi.DynSIModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            model.set_initial_status(config)
+
+            config_model(token, "dSI", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class dSIR(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/dSIR DynSIR
+            @ApiDescription Instantiate a SIR Model on the dynamic network bound to the provided token.
+            @apiVersion 2.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}} gamma    Recovery rate.
+            @apiName dsir
+            @apiGroup Epidemics Dynamic Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/dSIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            gamma = request.form['gamma']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsir.DynSIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            model.set_initial_status(config)
+
+            config_model(token, "dSIR", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class dSIS(Resource):
+
+    def put(self):
+        """
+        @api {put} /api/dSIS DynSIS
+        @ApiDescription Instantiate a SIS Model on the Dynamic network bound to the provided token.
+        @apiVersion 2.0.0
+        @apiParam {String} token    The token.
+        @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+        @apiParam {Number{0-1}}  beta    Infection rate.
+        @apiParam {Number{0-1}}  lambda    Recovery rate.
+        @apiName dsis
+        @apiGroup Epidemics Dynamic Networks
+        @apiExample [python request] Example usage:
+        put('http://localhost:5000/api/dSIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            lamb = request.form['lambda']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsis.DynSISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            model.set_initial_status(config)
+
+            config_model(token, "dSIS", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
 
 #######################################################################################
+
 
 class Iterators(Resource):
     """
@@ -2064,7 +2252,15 @@ class IterationBunch(Resource):
                 db_mod.close()
 
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-                results[model_name] = md.iteration_bunch(bunch)
+                if isinstance(md, DD.DynamicDiffusionModel):
+                    res = []
+                    for _ in past.builtins.xrange(0, bunch):
+                        its = md.iteration(node_status=True)
+                        res.append(its)
+                else:
+                    res = md.iteration_bunch(bunch)
+
+                results[model_name] = res
 
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
@@ -2211,12 +2407,14 @@ api.add_resource(Configure, '/api/Configure')
 api.add_resource(Graph, '/api/GetGraph')
 api.add_resource(Generators, '/api/Generators')
 api.add_resource(Networks, '/api/Networks')
+
 api.add_resource(ERGraph, '/api/Generators/ERGraph')
 api.add_resource(PlantedPartition, '/api/Generators/PlantedPartition')
 api.add_resource(BarabasiAlbertGraph, '/api/Generators/BarabasiAlbertGraph')
 api.add_resource(ClusteredBarabasiAlbertGraph, '/api/Generators/ClusteredBarabasiAlbertGraph')
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
 api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
+
 api.add_resource(IndependentCascades, '/api/IndependentCascades')
 api.add_resource(Models, '/api/Models')
 api.add_resource(Threshold, '/api/Threshold')
@@ -2233,6 +2431,11 @@ api.add_resource(Voter, '/api/Voter')
 api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')
 api.add_resource(Sznajd, '/api/Sznajd')
+
+api.add_resource(dSI, '/api/dSI')
+api.add_resource(dSIR, '/api/dSIR')
+api.add_resource(dSIS, '/api/dSIS')
+
 api.add_resource(Experiment, '/api/Experiment')
 api.add_resource(ExperimentStatus, '/api/ExperimentStatus')
 api.add_resource(Iteration, '/api/Iteration')

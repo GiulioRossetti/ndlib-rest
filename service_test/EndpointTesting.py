@@ -384,11 +384,43 @@ class RESTTest(unittest.TestCase):
         g = nx.barabasi_albert_graph(100000, 4)
         js = json_graph.node_link_data(g)
         jd = json.dumps(js)
-        res = put('http://localhost:5000/api/UploadNetwork', data={'file': str(jd), 'directed': False, 'token': token})
+        res = put('http://localhost:5000/api/UploadNetwork', data={'file': str(jd), 'directed': False, 'dynamic': False, 'token': token})
         self.assertEqual(res.status_code, 200)
         res = post('%s/api/GetGraph' % base, data={'token': token}).json()
         self.assertNotEquals(res.keys(), 0)
         res = delete('%s/api/Experiment' % base, data={'token': token})
+        self.assertEqual(res.status_code, 200)
+
+    def test_generate_dynamic_er_graphs(self):
+        res = get('%s/api/Experiment' % base).json()
+        token2 = res['token']
+        self.assertIsNotNone(token2)
+
+        res = get('%s/api/Generators' % base).json()
+        endpoints = res['endpoints']
+
+        for e in endpoints:
+            if e['name'] == 'ERGraph':
+                gr = put("%s%s" % (base, e['uri']), data={'n': 400, 'p': 0.05, 'directed': True, 't': 4, 'token': token2})
+                self.assertEqual(gr.status_code, 200)
+
+        res = put('%s/api/dSI' % base, data={'infected': 0.1, 'beta': 0.2, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSI: OK")
+
+        res = put('%s/api/dSIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.1, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSIS: OK")
+
+        res = put('%s/api/dSIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma':0.1, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSIR: OK")
+
+        res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token2}).json()
+        self.assertEqual(len(res.keys()), 3)
+        print("Iteration Bunch: OK")
+
+        res = delete('%s/api/Experiment' % base, data={'token': token2})
         self.assertEqual(res.status_code, 200)
 
 if __name__ == '__main__':
