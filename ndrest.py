@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, request
 import shelve
-import dumbdbm
+try:
+    import dumbdbm
+except ImportError:
+    from future.moves.dbm import dumb as dumbdbm
+
 import glob
 import os
 from utils import generators
