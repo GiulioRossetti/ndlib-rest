@@ -222,7 +222,7 @@ class NDlibClient(object):
         res = post('%s/api/Exploratory' % self.base, data={'exploratory': name, 'token': self.token})
         return res.status_code
 
-    def upload_graph(self, directed, graph):
+    def upload_graph(self, directed, graph, dynamic=False):
         res = post('%s/api/UploadNetwork' % self.base,
-                   data={'directed': directed, 'graph': json.dumps(graph), 'token': self.token})
+                   data={'directed': directed, 'graph': json.dumps(graph), 'dynamic': dynamic, 'token': self.token})
         return res.status_code
