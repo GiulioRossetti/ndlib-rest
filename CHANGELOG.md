@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 	- SEIR
 
 ### Updated
-- Diffusion Library update: ndlib 2.1.0
+- Diffusion Library update: ndlib 2.x.x
 
 
 ## [0.9.2]
