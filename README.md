@@ -13,14 +13,14 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 
 Python 2.7 required dependencies:
 
-- [ndlib](https://github.com/GiulioRossetti/ndlib)
-- flask 
-- flask-cors
-- flask_restful
-- flask_apidoc
-- networkx
-- numpy
-- scipy
+- [ndlib](https://github.com/GiulioRossetti/ndlib)=2.1.1
+- flask==0.12
+- flask-cors==3.0.2
+- flask_restful==0.3.5
+- flask_apidoc==1.0.0
+- networkx==1.11
+- numpy==1.12.0
+- scipy==0.18.1
 
 #### REST service setup
 Local testing

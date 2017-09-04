@@ -1,11 +1,28 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [Unrealeased]
+## [To Add]
+- Dynamic Graph generator
+- Dynamic Graph upload/load
+
+## [2.0.0]
 ### Added
-- Website
-    - REST tutorial
-    - Python client tutorial
+- Python 3 support
+- Dynamic Network Support
+	- Models
+		- Dynamic SI
+		- Dynamic SIS
+		- Dynamic SIR
+     
+## [1.0.0]
+### Added
+- Models
+	- SEIS
+	- SEIR
+
+### Updated
+- Diffusion Library update: ndlib 2.x.x
+
 
 ## [0.9.2]
 ### Added
