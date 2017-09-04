@@ -9,7 +9,7 @@ __author__ = 'rossetti'
 __license__ = "GPL"
 __email__ = "giulio.rossetti@gmail.com"
 
-base = "http://localhost:5000"
+base = "http://127.0.0.1:5000"
 
 
 class RESTTest(unittest.TestCase):
