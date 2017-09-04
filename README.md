@@ -1,9 +1,5 @@
-# NDlib-Rest
-
-![NDlib logo](https://github.com/GiulioRossetti/ndlib-rest/blob/ndlib-rest-2.0/static/images/logo-rest.png)
-
-
-Network Diffusion Library REST Service.
+# NDlib-Rest - Network Diffusion Library REST Service.
+[![Build Status](https://travis-ci.org/GiulioRossetti/ndlib-rest.svg?branch=master)](https://travis-ci.org/GiulioRossetti/ndlib-rest)
 
 This project offers a REST interface for the [ndlib](https://github.com/GiulioRossetti/ndlib) Python library.
 
@@ -17,7 +13,7 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 
 Python 2.7 required dependencies:
 
-- [ndlib](https://github.com/GiulioRossetti/ndlib)=2.1.0
+- [ndlib](https://github.com/GiulioRossetti/ndlib)=2.1.1
 - flask==0.12
 - flask-cors==3.0.2
 - flask_restful==0.3.5
