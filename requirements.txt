@@ -8,3 +8,4 @@ networkx==1.11
 numpy
 scipy
 ndlib
+dynetx
