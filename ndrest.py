@@ -2,6 +2,7 @@
 from flask import Flask, request
 import shelve
 import past
+from future.utils import iteritems
 try:
     import dumbdbm
 except ImportError:
@@ -84,8 +85,8 @@ def update_model(md, status):
 
     # nodes conf
     if 'nodes' in status:
-        for cn, cc in status['nodes'].iteritems():
-            for n, v in cc.iteritems():
+        for cn, cc in iteritems(status['nodes']):
+            for n, v in iteritems(cc):
                 config.add_node_configuration(cn, int(n), float(v))
 
     # edges conf
@@ -94,18 +95,18 @@ def update_model(md, status):
             config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
 
     # model conf
-    for k, v in md.params['model'].iteritems():
+    for k, v in iteritems(md.params['model']):
         config.add_model_parameter(k, v)
 
     if 'model' in status:
-        for me, mv in status['model'].iteritems():
+        for me, mv in iteritems(status['model']):
             config.add_model_parameter(me, float(mv))
 
     # status conf
     if 'status' in status:
-        for se, sv in status['status'].iteritems():
+        for se, sv in iteritems(status['status']):
             if se in md.available_statuses:
-                config.add_model_initial_configuration(se, map(int, sv))
+                config.add_model_initial_configuration(se, list(map(int, sv)))
 
     md.set_initial_status(config)
     return md
@@ -138,6 +139,7 @@ def config_model(token, model_name, model):
         db_name = '%s_%s' % (model_name, mid)
     else:
         db_name = "%s_0" % model_name
+
     r[db_name] = {}
     db_model['models'] = r
     db_model.close()
@@ -247,7 +249,7 @@ class ExperimentStatus(Resource):
 
         try:
             exp = db_net
-            net_info = {k: v for k, v in exp['net'].iteritems() if k != 'g'}
+            net_info = {k: v for k, v in iteritems(exp['net']) if k != 'g'}
             result['Network'] = net_info
             db_net.close()
         except:
@@ -581,7 +583,7 @@ class Networks(Resource):
         try:
             f = open("data/networks/%s.csv" % name)
             for l in f:
-                l = map(int, l.rstrip().split(","))
+                l = list(map(int, l.rstrip().split(",")))
                 g.add_edge(int(l[0]), int(l[1]))
 
             db_net = load_data("data/db/%s/net" % token)
@@ -2306,6 +2308,7 @@ class Exploratory(Resource):
         token = str(request.form['token'])
 
         if not os.path.exists("data/db/%s" % token):
+
             return {"Message": "Wrong Token"}, bad_request
 
         if "exploratory" in request.form and request.form["exploratory"] != "":
@@ -2324,8 +2327,9 @@ class Exploratory(Resource):
                     g = nx.Graph()
 
                 f = open("data/networks/%s.csv" % net_name)
+
                 for l in f:
-                    l = map(int, l.rstrip().split(",")[:2])
+                    l = list(map(int, l.rstrip().split(",")[:2]))
                     g.add_edge(int(l[0]), int(l[1]))
 
                 db_net = load_data("data/db/%s/net" % token)
