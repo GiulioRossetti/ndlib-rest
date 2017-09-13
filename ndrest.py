@@ -73,7 +73,7 @@ not_implemented = 501
 
 # Request Logging
 logger = logging.getLogger('werkzeug')
-handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1, encoding='bz2-codec')
+handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 app.logger.addHandler(handler)
