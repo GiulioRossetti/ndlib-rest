@@ -11,9 +11,9 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 * Python REST client: ndlib-rest/client
 
 
-Python 2.7 required dependencies:
+Python 3.6 required dependencies:
 
-- [ndlib](https://github.com/GiulioRossetti/ndlib)=2.1.1
+- [ndlib](https://github.com/GiulioRossetti/ndlib)=3.0.0
 - flask==0.12
 - flask-cors==3.0.2
 - flask_restful==0.3.5
@@ -21,6 +21,7 @@ Python 2.7 required dependencies:
 - networkx==1.11
 - numpy==1.12.0
 - scipy==0.18.1
+- [dynetx](https://github.com/GiulioRossetti/dynetx)==0.1.6
 
 #### REST service setup
 Local testing
