@@ -1,25 +1,46 @@
+# -*- coding: utf-8 -*-
 from flask import Flask, request
 import shelve
-import dumbdbm
+import past
+from future.utils import iteritems
+try:
+    import dumbdbm
+except ImportError:
+    from future.moves.dbm import dumb as dumbdbm
+
 import glob
 import os
+import dynetx as dn
 from utils import generators
 from flask_cors import CORS
 from flask_restful import Resource, Api
 from flask_apidoc import ApiDoc
-from ndlib import ThresholdModel as tm
-from ndlib import SIRModel as sir
-from ndlib import SIModel as si
-from ndlib import SISModel as sis
-from ndlib import ProfileModel as ac
-from ndlib import ProfileThresholdModel as pt
-from ndlib import IndependentCascadesModel as ic
-from ndlib import VoterModel as vm
-from ndlib import QVoterModel as qvm
-from ndlib import MajorityRuleModel as mrm
-from ndlib import SznajdModel as sm
-from ndlib import KerteszThresholdModel as jt
-from ndlib import CognitiveOpDynModel as cop
+
+import ndlib.models.DynamicDiffusionModel as DD
+import ndlib.models.ModelConfig as mc
+
+import ndlib.models.epidemics.ThresholdModel as tm
+import ndlib.models.epidemics.SIRModel as sir
+import ndlib.models.epidemics.SIModel as si
+import ndlib.models.epidemics.SISModel as sis
+import ndlib.models.epidemics.SEIRModel as seir
+import ndlib.models.epidemics.SEISModel as seis
+import ndlib.models.epidemics.ProfileModel as ac
+import ndlib.models.epidemics.ProfileThresholdModel as pt
+import ndlib.models.epidemics.IndependentCascadesModel as ic
+import ndlib.models.epidemics.KerteszThresholdModel as jt
+
+import ndlib.models.opinions.VoterModel as vm
+import ndlib.models.opinions.QVoterModel as qvm
+import ndlib.models.opinions.MajorityRuleModel as mrm
+import ndlib.models.opinions.SznajdModel as sm
+import ndlib.models.opinions.CognitiveOpDynModel as cop
+
+import ndlib.models.dynamic.DynSIModel as dsi
+import ndlib.models.dynamic.DynSIRModel as dsir
+import ndlib.models.dynamic.DynSISModel as dsis
+
+
 import json
 import shutil
 import networkx as nx
@@ -53,10 +74,81 @@ not_implemented = 501
 
 # Request Logging
 logger = logging.getLogger('werkzeug')
-handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1, encoding='bz2-codec')
+handler = RotatingFileHandler('logs/access.log.gz', maxBytes=1000, backupCount=1)
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 app.logger.addHandler(handler)
+
+
+def update_model(md, status):
+    config = mc.Configuration()
+
+    # nodes conf
+    if 'nodes' in status:
+        for cn, cc in iteritems(status['nodes']):
+            for n, v in iteritems(cc):
+                config.add_node_configuration(cn, int(n), float(v))
+
+    # edges conf
+    if 'edges' in status:
+        for ce in status['edges']:
+            config.add_edge_configuration('threshold', (int(ce['source']), int(ce['target'])), float(ce['weight']))
+
+    # model conf
+    for k, v in iteritems(md.params['model']):
+        config.add_model_parameter(k, v)
+
+    if 'model' in status:
+        for me, mv in iteritems(status['model']):
+            config.add_model_parameter(me, float(mv))
+
+    # status conf
+    if 'status' in status:
+        for se, sv in iteritems(status['status']):
+            if se in md.available_statuses:
+                config.add_model_initial_configuration(se, list(map(int, sv)))
+
+    md.set_initial_status(config)
+    return md
+
+
+def config_model(token, model_name, model):
+
+    if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
+        db_model = load_data("data/db/%s/models" % token)
+        r = db_model['models']
+        keys = r.keys()
+
+        if len(keys) > 0:
+            mid = len([int(x.split("_")[1]) for x in keys if model_name == x.split("_")[0]])
+            db_name = '%s_%s' % (model_name, mid)
+        else:
+            db_name = "%s_0" % model_name
+
+        db_conf = load_data("data/db/%s/configuration" % token)
+        mod = update_model(model, db_conf)
+        db_model['models'][db_name] = mod
+        db_model.close()
+
+    db_model = load_data("data/db/%s/models" % token)
+    r = db_model['models']
+    keys = r.keys()
+
+    if len(keys) > 0:
+        mid = len([int(x.split("_")[1]) for x in keys if model_name == x.split("_")[0]])
+        db_name = '%s_%s' % (model_name, mid)
+    else:
+        db_name = "%s_0" % model_name
+
+    r[db_name] = {}
+    db_model['models'] = r
+    db_model.close()
+
+    db_md_conf = load_data("data/db/%s/%s" % (token, db_name))
+    r = db_md_conf
+    r[db_name] = model
+    db_md_conf = r
+    db_md_conf.close()
 
 
 def load_data(path):
@@ -149,7 +241,6 @@ class ExperimentStatus(Resource):
                         post('http://localhost:5000/api/ExperimentStatus')
         """
         token = str(request.form['token'])
-
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
@@ -158,16 +249,13 @@ class ExperimentStatus(Resource):
 
         try:
             exp = db_net
-            net_info = {k: v for k, v in exp['net'].iteritems() if k != 'g'}
+            net_info = {k: v for k, v in iteritems(exp['net']) if k != 'g'}
             result['Network'] = net_info
             db_net.close()
         except:
             return {'Message': 'No resources attached to this token'}, not_found
-
         try:
-
             db_model = load_data("data/db/%s/models" % token)
-
             exp = db_model['models']
             model_names = exp.keys()
             db_model.close()
@@ -175,9 +263,8 @@ class ExperimentStatus(Resource):
             models = {}
             for model in model_names:
                 db_model = load_data("data/db/%s/%s" % (token, model))
-
                 exp = db_model
-                models[model] = exp[model].getinfo()
+                models[model] = exp[model].get_info()
                 db_model.close()
             result['Models'] = models
             return result
@@ -198,7 +285,6 @@ class ExperimentStatus(Resource):
                         put('http://localhost:5000/api/ExperimentStatus', data={'token': token, 'models': 'model1,model2'})
         """
         token = str(request.form['token'])
-
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
@@ -220,7 +306,7 @@ class ExperimentStatus(Resource):
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
                 md.reset()
-                md.set_initial_status()
+                md.reset()
                 db_mod[model_name] = md
                 db_mod.close()
         except:
@@ -303,7 +389,10 @@ class Graph(Resource):
 
             # if available:
             g = db_net['net']['g']
-            res = json_graph.node_link_data(g)
+            if isinstance(g, dn.DynGraph) or isinstance(g, dn.DynDiGraph):
+                res = dn.json_graph.node_link_data(g)
+            else:
+                res = json_graph.node_link_data(g)
             #else:
             #    db_net.close()
             #    return {"Message": "Dataset in read-only access."}, unavailable
@@ -334,6 +423,7 @@ class UploadNetwork(Resource):
             @apiParam {String}  token   The token.
             @apiParam {Boolean} directed If the graph is directed
             @apiParam {json} graph JSON description of the graph attributes.
+            @apiParam {Boolean} dynamic If the graph is a dynamic one.
             @apiParamExample {json} graph example:
                 {
                 "directed": false,
@@ -394,12 +484,19 @@ class UploadNetwork(Resource):
 
         try:
             g = None
+            dynamic = request.form['dynamic']
             if 'directed' in request.form:
-                directed = bool(request.form['directed'])
-            if directed:
-                g = json_graph.node_link_graph(data, directed=True)
+                directed = request.form['directed']
+            if directed == 'True':
+                if dynamic == 'True':
+                    g = dn.json_graph.node_link_graph(data, directed=True)
+                else:
+                    g = json_graph.node_link_graph(data, directed=True)
             else:
-                g = json_graph.node_link_graph(data, directed=False)
+                if dynamic == 'True':
+                    g = dn.json_graph.node_link_graph(data, directed=False)
+                else:
+                    g = json_graph.node_link_graph(data, directed=False)
 
             if len(g.nodes()) < min_number_of_nodes or len(g.nodes()) > max_number_of_nodes:
                 return {"Message": "Node number out fo range."}, bad_request
@@ -486,7 +583,7 @@ class Networks(Resource):
         try:
             f = open("data/networks/%s.csv" % name)
             for l in f:
-                l = map(int, l.rstrip().split(","))
+                l = list(map(int, l.rstrip().split(",")))
                 g.add_edge(int(l[0]), int(l[1]))
 
             db_net = load_data("data/db/%s/net" % token)
@@ -577,6 +674,7 @@ class ERGraph(Resource):
             @apiParam {Number{200..100000}} n    The number of nodes.
             @apiParam {Number{0-1}} p    The rewiring probability.
             @apiParam {Boolean} directed    If the graph should be directed.
+            @apiParam {Number} t Number of temporal snapshots
              If not specified an undirected graph will be generated.
             @apiName ERGraph
             @apiGroup Networks
@@ -598,9 +696,25 @@ class ERGraph(Resource):
             p = float(request.form['p'])
             directed = False
             if 'directed' in request.form:
-                directed = bool(request.form['directed'])
+                directed = request.form['directed']
+                if directed == 'True':
+                    directed = True
 
-            g = nx.erdos_renyi_graph(n, p, directed)
+            if 't' in request.form:
+                t = int(request.form['t'])
+                if directed:
+                    g = dn.DynDiGraph()
+                else:
+                    g = dn.DynGraph()
+            else:
+                t = 1
+
+            if t > 1:
+                for it in past.builtins.xrange(0, t):
+                    fl = nx.erdos_renyi_graph(n, p, directed)
+                    g.add_interactions_from(fl.edges(), it)
+            else:
+                g = nx.erdos_renyi_graph(n, p, directed)
 
             r = db_net
             r['net'] = {'g': g, 'name': 'ERGraph', 'params': {'n': n, 'p': p}}
@@ -610,6 +724,7 @@ class ERGraph(Resource):
             return {'Message': 'Parameter error'}, bad_request
 
         db_net.close()
+
         return {'Message': 'Resource created'}, success
 
 
@@ -956,7 +1071,8 @@ class Configure(Resource):
                                 "weight": 0.7
                             },
                         ],
-                    'model': {'initial_infected': [node1, node3]}
+                    'model': {'model_parameter': parameter_value},
+                    'status': {'status_name': [node1, node2, node3]}
                 }
             @apiName configure
             @apiGroup Experiment
@@ -977,6 +1093,7 @@ class Configure(Resource):
 
         exp = db_models['models'].keys()
         db_models.close()
+
         try:
             ml = []
             if 'models' in request.form:
@@ -989,12 +1106,11 @@ class Configure(Resource):
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 r = db_mod
                 md = copy.deepcopy(r[model_name])
-                md.change_initial_status(status)
+                md = update_model(md, status)
                 db_mod[model_name] = md
                 db_mod.close()
-
         except:
-            return {'Message': 'Parameter error'}, bad_request
+            return {'Message': "Parameter error"}, bad_request
 
         return {"Message": "Configuration applied"}, success
 
@@ -1011,7 +1127,7 @@ class Threshold(Resource):
                                                 thresholds will be assigned using a normal distribution.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName threshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Threshold', data={'token': token, 'infected': percentage, 'threshold': threshold})
         """
@@ -1034,42 +1150,16 @@ class Threshold(Resource):
         db_net.close()
 
         model = tm.ThresholdModel(g)
-        conf = {'model': {'percentage_infected': float(infected)}}
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
 
         if float(threshold) > 0:
-            conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][n] = float(threshold)
-
-        model.set_initial_status(conf)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
-
-        db_model = load_data("data/db/%s/models" % token)
+                config.add_node_configuration("threshold", n, float(threshold))
+        model.set_initial_status(config)
 
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'Threshold' == x.split("_")[0]])
-                db_name = 'Threshold_%s' % mid
-            else:
-                db_name = "Threshold_0"
-
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_threshold = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_threshold
-            r[db_name] = model
-            db_threshold = r
-            db_threshold.close()
+            config_model(token, "Threshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1082,14 +1172,13 @@ class IndependentCascades(Resource):
         """
             @api {put} /api/IndependentCascades Independent Cascades
             @ApiDescription Instantiate an Independent Cascades Model on the network bound to the provided token.
-                The edge threshold for each node is assumed equal to 1 divided its number of neighbors:
-                this behavior can be changed by using the <a href"#api-Experiment-configure">advanced
-                configuration</a> endpoint.
+                The edge threshold is assumed equal to 0.1 divided for all edges:
+                this behavior can be changed by using the <a href="#api-Experiment-configure"> advanced configuration </a> endpoint.
             @apiVersion 0.5.0
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName indepcascades
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/IndependentCascades', data={'token': token, 'infected': percentage})
         """
@@ -1108,36 +1197,17 @@ class IndependentCascades(Resource):
         db_net.close()
 
         model = ic.IndependentCascadesModel(g)
-        conf = {'model': {'percentage_infected': float(infected)}}
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
 
-        model.set_initial_status(conf)
+        threshold = 0.1
+        for e in g.edges():
+            config.add_edge_configuration("threshold", e, threshold)
 
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
-
-        db_model = load_data("data/db/%s/models" % token)
+        model.set_initial_status(config)
 
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'IndependentCascades' == x.split("_")[0]])
-                db_name = 'IndependentCascades_%s' % mid
-            else:
-                db_name = "IndependentCascades_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_ic = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_ic
-            r[db_name] = model
-            db_ic = r
-            db_ic.close()
+            config_model(token, "IndependentCascades", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1156,7 +1226,7 @@ class SIR(Resource):
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiParam {Number{0-1}} gamma    Recovery rate.
             @apiName sir
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
         """
@@ -1177,35 +1247,14 @@ class SIR(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = sir.SIRModel(g, {'beta': float(beta), 'gamma': float(gamma)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = sir.SIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            model.set_initial_status(config)
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SIR' == x.split("_")[0]])
-                db_name = 'SIR_%s' % mid
-            else:
-                db_name = "SIR_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sir = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sir
-            r[db_name] = model
-            db_sir = r
-            db_sir.close()
-
+            config_model(token, "SIR", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1223,7 +1272,7 @@ class SI(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiName si
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SI', data={'beta': beta, 'infected': percentage, 'token': token})
         """
@@ -1243,35 +1292,13 @@ class SI(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = si.SIModel(g, {'beta': float(beta)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = si.SIModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            model.set_initial_status(config)
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SI' == x.split("_")[0]])
-                db_name = 'SI_%s' % mid
-            else:
-                db_name = "SI_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_si = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_si
-            r[db_name] = model
-            db_si = r
-            db_si.close()
-
+            config_model(token, "SI", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1290,7 +1317,7 @@ class SIS(Resource):
             @apiParam {Number{0-1}}  beta    Infection rate.
             @apiParam {Number{0-1}}  lambda    Recovery rate.
             @apiName sis
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/SIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
         """
@@ -1311,35 +1338,114 @@ class SIS(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = sis.SISModel(g, {'beta': float(beta), 'lambda': float(lamb)})
-            model.set_initial_status({'model': {'percentage_infected': float(infected)}})
+            model = sis.SISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            model.set_initial_status(config)
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+            config_model(token, "SIS", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
 
-            db_model = load_data("data/db/%s/models" % token)
+        return {'Message': 'Resource created'}, success
 
-            r = db_model['models']
-            keys = r.keys()
 
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SIS' == x.split("_")[0]])
-                db_name = 'SIS_%s' % mid
-            else:
-                db_name = "SIS_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
+class SEIS(Resource):
 
-            db_sis = load_data("data/db/%s/%s" % (token, db_name))
+    def put(self):
+        """
+            @api {put} /api/SEIS SEIS
+            @ApiDescription Instantiate a SEIS Model on the network bound to the provided token.
+            @apiVersion 1.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}}  lambda    Recovery rate.
+            @apiParam {Number{0-1}}  alpha   Incubation period.
+            @apiName seis
+            @apiGroup Epidemics
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/SEIS', data={'beta': beta, 'lambda': lambda, 'alpha': alpha, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
 
-            r = db_sis
-            r[db_name] = model
-            db_sis = r
-            db_sis.close()
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
 
+        try:
+            beta = request.form['beta']
+            lamb = request.form['lambda']
+            alpha = request.form['alpha']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = seis.SEISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            config.add_model_parameter('alpha', float(alpha))
+            model.set_initial_status(config)
+
+            config_model(token, "SEIS", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class SEIR(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/SEIR SEIR
+            @ApiDescription Instantiate a SEIR Model on the network bound to the provided token.
+            @apiVersion 1.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}}  gamma    Recovery rate.
+            @apiParam {Number{0-1}}  alpha   Incubation period.
+            @apiName seir
+            @apiGroup Epidemics
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/SEIS', data={'beta': beta, 'gamma': gamma, 'alpha': alpha, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            gamma = request.form['gamma']
+            alpha = request.form['alpha']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = seir.SEIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            config.add_model_parameter('alpha', float(alpha))
+            model.set_initial_status(config)
+
+            config_model(token, "SEIR", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1356,10 +1462,11 @@ class Profile(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} profile    A fixed profile value for all the nodes: if not specified the
                                                 profile will be assigned using a normal distribution.
-
+            @apiParam {Number{0-1}} blocked   Probability for a node that chose to not adopt to became blocked
+            @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profile
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Profile', data={'token': token, 'infected': percentage})
         """
@@ -1383,40 +1490,28 @@ class Profile(Resource):
             db_net.close()
 
             model = ac.ProfileModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
+
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
 
             if float(profile) > 0:
-                conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][n] = float(profile)
-            model.set_initial_status(conf)
+                    config.add_node_configuration("profile", n, float(profile))
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+            blocked = 0
+            if 'blocked' in request.form and request.form['blocked'] != "":
+                blocked = float(request.form['blocked'])
 
-            db_model = load_data("data/db/%s/models" % token)
+            config.add_model_parameter('blocked', float(blocked))
 
-            r = db_model['models']
-            keys = r.keys()
+            adopter_rate = 0
+            if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
+                adopter_rate = float(request.form['adopter_rate'])
 
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'Profile' == x.split("_")[0]])
-                db_name = 'Profile_%s' % mid
-            else:
-                db_name = "Profile_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
+            config.add_model_parameter('adopter_rate', float(adopter_rate))
+            model.set_initial_status(config)
 
-            db_profile = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_profile
-            r[db_name] = model
-            db_profile = r
-            db_profile.close()
-
+            config_model(token, "Profile", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1435,9 +1530,11 @@ class ProfileThreshold(Resource):
                                                 profile will be assigned using a normal distribution.
             @apiParam {Number{0-1}} threshold    A fixed threshold value for all the nodes: if not specified the
                                                 thresholds will be assigned using a normal distribution.
+            @apiParam {Number{0-1}} blocked   Probability for a node that chose to not adopt to became blocked
+            @apiParam {Number{0-1}} adopter_rate    Probability of spontaneous adoption
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName profilethreshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/ProfileThreshold', data={'token': token, 'infected': percentage, 'threshold': threshold, 'profile': profile})
         """
@@ -1465,50 +1562,31 @@ class ProfileThreshold(Resource):
             db_net.close()
 
             model = pt.ProfileThresholdModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
 
             if float(profile) > 0:
-                conf['nodes'] = {'profile': {}}
                 for n in g.nodes():
-                    conf['nodes']['profile'][n] = float(profile)
+                    config.add_node_configuration("profile", n, float(profile))
 
             if float(threshold) > 0:
-                if 'nodes' not in conf:
-                    conf['nodes'] = {'threshold': {}}
-                else:
-                    conf['nodes']['threshold'] = {}
-
                 for n in g.nodes():
-                    conf['nodes']['threshold'][n] = float(threshold)
+                    config.add_node_configuration("threshold", n, float(profile))
 
-            model.set_initial_status(conf)
+            blocked = 0
+            if 'blocked' in request.form and request.form['blocked'] != "":
+                blocked = float(request.form['blocked'])
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
+            config.add_model_parameter('blocked', float(blocked))
 
-            db_model = load_data("data/db/%s/models" % token)
+            adopter_rate = 0
+            if 'adopter_rate' in request.form and request.form['adopter_rate'] != "":
+                adopter_rate = float(request.form['adopter_rate'])
 
-            r = db_model['models']
-            keys = r.keys()
+            config.add_model_parameter('adopter_rate', float(adopter_rate))
+            model.set_initial_status(config)
 
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'ProfileThreshold' == x.split("_")[0]])
-                db_name = 'ProfileThreshold_%s' % mid
-            else:
-                db_name = "ProfileThreshold_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_profile_threshold = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_profile_threshold
-            r[db_name] = model
-            db_profile_threshold = r
-            db_profile_threshold.close()
-
+            config_model(token, "ProfileThreshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1525,7 +1603,7 @@ class Voter(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName voter
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Voter', data={'token': token, 'infected': percentage})
         """
@@ -1534,47 +1612,22 @@ class Voter(Resource):
         if not os.path.exists("data/db/%s" % token):
             return {"Message": "Wrong Token"}, bad_request
 
+        infected = request.form['infected']
+        if infected == '':
+            infected = 0.05
+
+        db_net = load_data("data/db/%s/net" % token)
+
+        g = db_net['net']['g']
+        db_net.close()
+
+        model = vm.VoterModel(g)
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', float(infected))
+        model.set_initial_status(config)
+
         try:
-            infected = request.form['infected']
-            if infected == '':
-                infected = 0.05
-
-            db_net = load_data("data/db/%s/net" % token)
-
-            g = db_net['net']['g']
-            db_net.close()
-
-            model = vm.VoterModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
-
-            model.set_initial_status(conf)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'VoterModel' == x.split("_")[0]])
-                db_name = 'VoterModel_%s' % mid
-            else:
-                db_name = "VoterModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_voter = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_voter
-            r[db_name] = model
-            db_voter = r
-            db_voter.close()
-
+            config_model(token, "Voter", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1592,7 +1645,7 @@ class QVoter(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number} q Number of neighbours that affect the opinion of an agent
             @apiName qvoter
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/QVoter', data={'token': token, 'q': number,'infected': percentage})
         """
@@ -1612,37 +1665,13 @@ class QVoter(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = qvm.QVoterModel(g, {'q': q})
-            conf = {'model': {'percentage_infected': float(infected)}}
+            model = qvm.QVoterModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter("q", q)
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            model.set_initial_status(conf)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'QVoterModel' == x.split("_")[0]])
-                db_name = 'QVoterModel_%s' % mid
-            else:
-                db_name = "QVoterModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_qvoter = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_qvoter
-            r[db_name] = model
-            db_qvoter = r
-            db_qvoter.close()
-
+            config_model(token, "QVoterModel", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1660,7 +1689,7 @@ class MaJorityRule(Resource):
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiParam {Number{0-N}} q The group size.
             @apiName majority
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Majority', data={'token': token, 'infected': percentage, 'q': q})
         """
@@ -1680,37 +1709,13 @@ class MaJorityRule(Resource):
             g = db_net['net']['g']
             db_net.close()
 
-            model = mrm.MajorityRuleModel(g, {'q': q})
-            conf = {'model': {'percentage_infected': float(infected)}}
+            model = mrm.MajorityRuleModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter("q", q)
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            model.set_initial_status(conf)
-
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'MajorityRule' == x.split("_")[0]])
-                db_name = 'MajorityRule_%s' % mid
-            else:
-                db_name = "MajorityRule_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_majority_rule = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_majority_rule
-            r[db_name] = model
-            db_majority_rule = r
-            db_majority_rule.close()
-
+            config_model(token, "MajorityRule", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1728,7 +1733,7 @@ class Sznajd(Resource):
             @apiParam {String} token    The token.
             @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
             @apiName sznajd
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/Sznajd', data={'token': token, 'infected': percentage})
         """
@@ -1748,36 +1753,12 @@ class Sznajd(Resource):
             db_net.close()
 
             model = sm.SznajdModel(g)
-            conf = {'model': {'percentage_infected': float(infected)}}
 
-            model.set_initial_status(conf)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            model.set_initial_status(config)
 
-            if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-                db_conf = load_data("data/db/%s/configuration" % token)
-                model.change_initial_status(db_conf['configuration'])
-                db_conf.close()
-
-            db_model = load_data("data/db/%s/models" % token)
-
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'SznajdModel' == x.split("_")[0]])
-                db_name = 'SznajdModel_%s' % mid
-            else:
-                db_name = "SznajdModel_0"
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_sznajd = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_sznajd
-            r[db_name] = model
-            db_sznajd = r
-            db_sznajd.close()
-
+            config_model(token, "Sznajd", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1798,7 +1779,7 @@ class KerteszThreshold(Resource):
             @apiParam {Number {0-1}} adopter_rate    The adopter rate. Fixed probability of self-infection per iteration.
             @apiParam {Number {0-1}} blocked    Percentage of blocked nodes.
             @apiName KerteszThreshold
-            @apiGroup Models
+            @apiGroup Epidemics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/KerteszThreshold', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
         """
@@ -1828,44 +1809,20 @@ class KerteszThreshold(Resource):
         g = db_net['net']['g']
         db_net.close()
 
-        model = jt.KerteszThresholdModel(g, {'adopter_rate': adopter_rate, 'blocked': blocked})
-
-        conf = {'model': {'percentage_infected': float(infected)}}
+        model = jt.KerteszThresholdModel(g)
+        config = mc.Configuration()
+        config.add_model_parameter('percentage_infected', infected)
+        config.add_model_parameter('adopter_rate', adopter_rate)
+        config.add_model_parameter('percentage_blocked', blocked)
 
         if float(threshold) > 0:
-            conf['nodes'] = {'threshold': {}}
             for n in g.nodes():
-                conf['nodes']['threshold'][n] = float(threshold)
+                config.add_node_configuration("threshold", n, float(threshold))
 
-        model.set_initial_status(conf)
-
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
-
-        db_model = load_data("data/db/%s/models" % token)
+        model.set_initial_status(config)
 
         try:
-            r = db_model['models']
-            keys = r.keys()
-
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'KerteszThreshold' == x.split("_")[0]])
-                db_name = 'KerteszThreshold_%s' % mid
-            else:
-                db_name = "KerteszThreshold_0"
-
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
-
-            db_thresholdk = load_data("data/db/%s/%s" % (token, db_name))
-
-            r = db_thresholdk
-            r[db_name] = model
-            db_thresholdk = r
-            db_thresholdk.close()
+            config_model(token, "KerteszThreshold", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
@@ -1892,7 +1849,7 @@ class CognitiveOpinionDynamic(Resource):
 
 
             @apiName CognitiveOpinionDynamic
-            @apiGroup Models
+            @apiGroup Opinion Dynamics
             @apiExample [python request] Example usage:
             put('http://localhost:5000/api/CognitiveOpinionDynamic', data={'token': token, 'infected': percentage, 'adopters_rate': adopters_rate, 'blocked': blocked, 'threshold': threshold})
         """
@@ -1935,49 +1892,181 @@ class CognitiveOpinionDynamic(Resource):
         g = db_net['net']['g']
         db_net.close()
 
-        model = cop.CognitiveOpDynModel(g, {'I': I,
-                                            'B_range_min': B_range_min, 'B_range_max': B_range_max,
-                                            'T_range_min': T_range_min, 'T_range_max': T_range_max,
-                                            'R_fraction_negative': R_fraction_negative,
-                                            'R_fraction_neutral': R_fraction_neutral,
-                                            'R_fraction_positive': R_fraction_positive}
-                                        )
-        model.set_initial_status()
+        model = cop.CognitiveOpDynModel(g)
 
-        if len(glob.glob("data/db/%s/configuration*" % token)) > 0:
-            db_conf = load_data("data/db/%s/configuration" % token)
-            model.change_initial_status(db_conf['configuration'])
-            db_conf.close()
-
-        db_model = load_data("data/db/%s/models" % token)
+        config = mc.Configuration()
+        config.add_model_parameter("I", I)
+        config.add_model_parameter("B_range_min", B_range_min)
+        config.add_model_parameter("B_range_max", B_range_max)
+        config.add_model_parameter("T_range_min", T_range_min)
+        config.add_model_parameter("T_range_max", T_range_max)
+        config.add_model_parameter("R_fraction_negative", R_fraction_negative)
+        config.add_model_parameter("R_fraction_neutral", R_fraction_neutral)
+        config.add_model_parameter("R_fraction_positive", R_fraction_positive)
+        config.add_model_parameter('percentage_infected', 0.1)
+        model.set_initial_status(config)
 
         try:
-            r = db_model['models']
-            keys = r.keys()
+            config_model(token, "CognitiveOpinionDynamic", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
 
-            if len(keys) > 0:
-                mid = len([int(x.split("_")[1]) for x in keys if 'CognitiveOpinionDynamic' == x.split("_")[0]])
-                db_name = 'CognitiveOpinionDynamic_%s' % mid
-            else:
-                db_name = "CognitiveOpinionDynamic_0"
+        return {'Message': 'Resource created'}, success
 
-            r[db_name] = {}
-            db_model['models'] = r
-            db_model.close()
+######## Dynamic ##########
 
-            db_cognitiveop = load_data("data/db/%s/%s" % (token, db_name))
 
-            r = db_cognitiveop
-            r[db_name] = model
-            db_cognitiveop = r
-            db_cognitiveop.close()
+class dSI(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/dSI DynSI
+            @ApiDescription Instantiate a SI Model on the dynamic network bound to the provided token.
+            @apiVersion 2.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiName dsi
+            @apiGroup Epidemics Dynamic Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/dSI', data={'beta': beta, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsi.DynSIModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            model.set_initial_status(config)
+
+            config_model(token, "dSI", model)
         except:
             return {'Message': 'Parameter error'}, bad_request
 
         return {'Message': 'Resource created'}, success
 
 
+class dSIR(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/dSIR DynSIR
+            @ApiDescription Instantiate a SIR Model on the dynamic network bound to the provided token.
+            @apiVersion 2.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  beta    Infection rate.
+            @apiParam {Number{0-1}} gamma    Recovery rate.
+            @apiName dsir
+            @apiGroup Epidemics Dynamic Networks
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/dSIR', data={'beta': beta, 'gamma': gamma, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            gamma = request.form['gamma']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsir.DynSIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('gamma', float(gamma))
+            model.set_initial_status(config)
+
+            config_model(token, "dSIR", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
+class dSIS(Resource):
+
+    def put(self):
+        """
+        @api {put} /api/dSIS DynSIS
+        @ApiDescription Instantiate a SIS Model on the Dynamic network bound to the provided token.
+        @apiVersion 2.0.0
+        @apiParam {String} token    The token.
+        @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+        @apiParam {Number{0-1}}  beta    Infection rate.
+        @apiParam {Number{0-1}}  lambda    Recovery rate.
+        @apiName dsis
+        @apiGroup Epidemics Dynamic Networks
+        @apiExample [python request] Example usage:
+        put('http://localhost:5000/api/dSIS', data={'beta': beta, 'lambda': lambda, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            beta = request.form['beta']
+            lamb = request.form['lambda']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            if not isinstance(g, dn.DynGraph):
+                if not isinstance(g, dn.DynDiGraph):
+                    return {'Message': 'Dynamic Graph not attached to this token'}, bad_request
+
+            model = dsis.DynSISModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('beta', float(beta))
+            config.add_model_parameter('lambda', float(lamb))
+            model.set_initial_status(config)
+
+            config_model(token, "dSIS", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
 #######################################################################################
+
 
 class Iterators(Resource):
     """
@@ -2056,13 +2145,13 @@ class Iteration(Resource):
                 md = copy.deepcopy(r[model_name])
                 db_mod.close()
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-                iteration, status = md.iteration()
+                its = md.iteration(node_status=True)
 
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
                 db_mod.close()
 
-                results[model_name] = {'iteration': iteration, 'status': status}
+                results[model_name] = {'iteration': its['iteration'], 'status': its['status']}
         except:
            return {'Message': 'Parameter error'}, bad_request
 
@@ -2165,7 +2254,15 @@ class IterationBunch(Resource):
                 db_mod.close()
 
                 map(os.remove, glob.glob("data/db/%s/%s*" % (token, model_name)))
-                results[model_name] = md.iteration_bunch(bunch)
+                if isinstance(md, DD.DynamicDiffusionModel):
+                    res = []
+                    for _ in past.builtins.xrange(0, bunch):
+                        its = md.iteration(node_status=True)
+                        res.append(its)
+                else:
+                    res = md.iteration_bunch(bunch)
+
+                results[model_name] = res
 
                 db_mod = load_data("data/db/%s/%s" % (token, model_name))
                 db_mod[model_name] = md
@@ -2211,6 +2308,7 @@ class Exploratory(Resource):
         token = str(request.form['token'])
 
         if not os.path.exists("data/db/%s" % token):
+
             return {"Message": "Wrong Token"}, bad_request
 
         if "exploratory" in request.form and request.form["exploratory"] != "":
@@ -2229,8 +2327,9 @@ class Exploratory(Resource):
                     g = nx.Graph()
 
                 f = open("data/networks/%s.csv" % net_name)
+
                 for l in f:
-                    l = map(int, l.rstrip().split(",")[:2])
+                    l = list(map(int, l.rstrip().split(",")[:2]))
                     g.add_edge(int(l[0]), int(l[1]))
 
                 db_net = load_data("data/db/%s/net" % token)
@@ -2240,11 +2339,12 @@ class Exploratory(Resource):
                 db_net = r
                 db_net.close()
 
-                conf = {}
+                conf = {'nodes': {}, 'edges': {}, 'model': {}, 'status': {}}
 
                 # Read Configuration
                 if os.path.exists("%s/nodes.csv" % base_path):
-                    conf = {'nodes': {'profile': {}, 'threshold': {}}, 'edges': []}
+                    conf['nodes']['profile'] = {}
+                    conf['nodes']['threshold'] = {}
                     f = open("%s/nodes.csv" % base_path)
                     for l in f:
                         l = l.rstrip().split(",")
@@ -2252,20 +2352,17 @@ class Exploratory(Resource):
                         conf['nodes']['profile'][int(l[0])] = float(l[2])
 
                 if os.path.exists("%s/nodes_initial_status.csv" % base_path):
-                    conf['model'] = {}
+                    conf['status'] = {'Infected': [], 'Blocked': []}
                     f = open("%s/nodes_initial_status.csv" % base_path)
                     for l in f:
                         l = l.rstrip().split(",")
                         node = int(l[0])
                         nstatus = int(l[1])
                         if nstatus == 1:
-                            if 'infected_nodes' not in conf['model']:
-                                conf['model']['infected_nodes'] = {}
-                            conf['model']['infected_nodes'][node] = nstatus
+                            conf['status']['Infected'].append(node)
+
                         if nstatus == -1:
-                            if 'blocked' not in conf['model']:
-                                conf['model']['blocked'] = {}
-                            conf['model']['blocked'][node] = nstatus
+                            conf['status']['Blocked'].append(node)
 
                 if os.path.exists("%s/edges.csv" % base_path):
                     f = open("%s/edges.csv" % base_path)
@@ -2310,23 +2407,27 @@ class Exploratory(Resource):
         return res, success
 
 
+api.add_resource(Configure, '/api/Configure')
 api.add_resource(Graph, '/api/GetGraph')
 api.add_resource(Generators, '/api/Generators')
 api.add_resource(Networks, '/api/Networks')
+
 api.add_resource(ERGraph, '/api/Generators/ERGraph')
 api.add_resource(PlantedPartition, '/api/Generators/PlantedPartition')
 api.add_resource(BarabasiAlbertGraph, '/api/Generators/BarabasiAlbertGraph')
 api.add_resource(ClusteredBarabasiAlbertGraph, '/api/Generators/ClusteredBarabasiAlbertGraph')
 api.add_resource(WattsStrogatzGraph, '/api/Generators/WattsStrogatzGraph')
 api.add_resource(CompleteGraph, '/api/Generators/CompleteGraph')
+
 api.add_resource(IndependentCascades, '/api/IndependentCascades')
-api.add_resource(Configure, '/api/Configure')
 api.add_resource(Models, '/api/Models')
 api.add_resource(Threshold, '/api/Threshold')
 api.add_resource(KerteszThreshold, '/api/KerteszThreshold')
 api.add_resource(SIR, '/api/SIR')
 api.add_resource(SI, '/api/SI')
 api.add_resource(SIS, '/api/SIS')
+api.add_resource(SEIS, '/api/SEIS')
+api.add_resource(SEIR, '/api/SEIR')
 api.add_resource(Profile, '/api/Profile')
 api.add_resource(ProfileThreshold, '/api/ProfileThreshold')
 api.add_resource(CognitiveOpinionDynamic, '/api/CognitiveOpinionDynamic')
@@ -2334,11 +2435,15 @@ api.add_resource(Voter, '/api/Voter')
 api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')
 api.add_resource(Sznajd, '/api/Sznajd')
+
+api.add_resource(dSI, '/api/dSI')
+api.add_resource(dSIR, '/api/dSIR')
+api.add_resource(dSIS, '/api/dSIS')
+
 api.add_resource(Experiment, '/api/Experiment')
 api.add_resource(ExperimentStatus, '/api/ExperimentStatus')
 api.add_resource(Iteration, '/api/Iteration')
 api.add_resource(IterationBunch, '/api/IterationBunch')
-# api.add_resource(CompleteRun, '/api/CompleteRun')
 api.add_resource(Exploratory, '/api/Exploratory')
 api.add_resource(UploadNetwork, '/api/UploadNetwork')
 

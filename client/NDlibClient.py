@@ -111,9 +111,19 @@ class NDlibClient(object):
                   data={'infected': infected, 'beta': beta, 'lambda': lbd, 'token': self.token})
         return res.status_code
 
+    def add_SEIS(self, infected, beta, alpha, lbd):
+        res = put('%s/api/SEIS' % self.base,
+                  data={'infected': infected, 'beta': beta, 'lambda': lbd, 'alpha': alpha, 'token': self.token})
+        return res.status_code
+
     def add_SIR(self, infected, beta, gamma):
         res = put('%s/api/SIR' % self.base,
                   data={'infected': infected, 'beta': beta, 'gamma': gamma, 'token': self.token})
+        return res.status_code
+
+    def add_SEIR(self, infected, beta, gamma, alpha):
+        res = put('%s/api/SEIR' % self.base,
+                  data={'infected': infected, 'beta': beta, 'gamma': gamma, 'alpha': alpha, 'token': self.token})
         return res.status_code
 
     def add_independent_cascades(self, infected):
@@ -212,7 +222,7 @@ class NDlibClient(object):
         res = post('%s/api/Exploratory' % self.base, data={'exploratory': name, 'token': self.token})
         return res.status_code
 
-    def upload_graph(self, directed, graph):
+    def upload_graph(self, directed, graph, dynamic=False):
         res = post('%s/api/UploadNetwork' % self.base,
-                   data={'directed': directed, 'graph': json.dumps(graph), 'token': self.token})
+                   data={'directed': directed, 'graph': json.dumps(graph), 'dynamic': dynamic, 'token': self.token})
         return res.status_code
