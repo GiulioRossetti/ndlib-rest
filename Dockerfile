@@ -1,4 +1,4 @@
-FROM python:2.7-slim
+FROM python:3.6-slim
 MAINTAINER Salvo Rinzivillo <rinzivillo@isti.cnr.it>
 
 

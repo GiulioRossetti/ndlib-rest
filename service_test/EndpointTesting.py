@@ -22,7 +22,7 @@ class RESTTest(unittest.TestCase):
         res = delete('%s/api/Experiment' % base, data={'token': token1})
         self.assertEqual(res.status_code, 200)
 
-        print "Experiment Create and Destroy: OK"
+        print("Experiment Create and Destroy: OK")
 
     def test_generate_er_graphs(self):
         res = get('%s/api/Experiment' % base).json()
@@ -40,7 +40,7 @@ class RESTTest(unittest.TestCase):
         res = delete('%s/api/Experiment' % base, data={'token': token2})
         self.assertEqual(res.status_code, 200)
 
-        print "Generate ERGraph: OK"
+        print("Generate ERGraph: OK")
 
     def test_generate_ws_graphs(self):
         res = get('%s/api/Experiment' % base).json()
@@ -58,7 +58,7 @@ class RESTTest(unittest.TestCase):
         res = delete('%s/api/Experiment' % base, data={'token': token2})
         self.assertEqual(res.status_code, 200)
 
-        print "Generate WSSGraph: OK"
+        print("Generate WSSGraph: OK")
 
     def test_generate_ba_graphs(self):
         res = get('%s/api/Experiment' % base).json()
@@ -76,7 +76,7 @@ class RESTTest(unittest.TestCase):
         res = delete('%s/api/Experiment' % base, data={'token': token3})
         self.assertEqual(res.status_code, 200)
 
-        print "Generate BAGraph: OK"
+        print("Generate BAGraph: OK")
 
     def test_generate_load_real_network(self):
         res = get('%s/api/Experiment' % base).json()
@@ -88,19 +88,19 @@ class RESTTest(unittest.TestCase):
 
         res = put('%s/api/Networks' % base, data={'name': 'CogOp', 'token': token4})
         self.assertEqual(res.status_code, 200)
-        print "Load Real Graph: OK"
+        print("Load Real Graph: OK")
 
         res = post('%s/api/GetGraph' % base, data={'token': token4}).json()
         self.assertNotIn('Status', res)
-        print "Get Graph (available): OK"
+        print("Get Graph (available): OK")
 
         res = delete('%s/api/Networks' % base, data={'token': token4})
         self.assertEqual(res.status_code, 200)
-        print "Network Destroy: OK"
+        print("Network Destroy: OK")
 
         res = put('%s/api/Networks' % base, data={'name': 'CogOp', 'token': token4})
         self.assertEqual(res.status_code, 200)
-        print "Load Real Graph: OK"
+        print("Load Real Graph: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token4})
         self.assertEqual(res.status_code, 200)
@@ -120,44 +120,52 @@ class RESTTest(unittest.TestCase):
 
         mods = get('%s/api/Models' % base).json()
         self.assertIn('endpoints', mods)
-        print "Retrieve models enpoints: OK"
+        print("Retrieve models enpoints: OK")
 
         # Models
         res = put('%s/api/SI' % base, data={'infected': 0.1, 'beta': 0.2, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load SI: OK"
+        print("Load SI: OK")
 
         res = put('%s/api/SIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load SIS: OK"
+        print("Load SIS: OK")
+
+        res = put('%s/api/SEIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'alpha': 0.05, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print("Load SEIS: OK")
 
         res = put('%s/api/SIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load SIR: OK"
+        print("Load SIR: OK")
+
+        res = put('%s/api/SEIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'alpha': 0.05, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print("Load SEIR: OK")
 
         res = put('%s/api/Threshold' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load Threshold: OK"
+        print("Load Threshold: OK")
 
         res = put('%s/api/KerteszThreshold' % base, data={'infected': 0.1, 'blocked': 0.1, 'adopter_rate': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load KerteszThreshold: OK"
+        print("Load KerteszThreshold: OK")
 
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load Profile: OK"
+        print("Load Profile: OK")
 
         res = put('%s/api/ProfileThreshold' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load ProfileThreshold: OK"
+        print("Load ProfileThreshold: OK")
 
         res = put('%s/api/IndependentCascades' % base, data={'infected': 0.1, 'token': token5})
         self.assertEqual(res.status_code, 200)
-        print "Load Independent Cascades: OK"
+        print("Load Independent Cascades: OK")
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token5}).json()
-        self.assertEqual(len(res['Models']), 8)
-        print "Display Experiment Resources: OK"
+        self.assertEqual(len(res['Models']), 10)
+        print("Display Experiment Resources: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token5})
         self.assertEqual(res.status_code, 200)
@@ -177,73 +185,73 @@ class RESTTest(unittest.TestCase):
 
         mods = get('%s/api/Models' % base).json()
         self.assertIn('endpoints', mods)
-        print "Retrieve models enpoints: OK"
+        print("Retrieve models enpoints: OK")
 
         # Models
         res = put('%s/api/SI' % base, data={'infected': 0.1, 'beta': 0.2, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load SI: OK"
+        print("Load SI: OK")
 
         res = put('%s/api/SIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load SIS: OK"
+        print("Load SIS: OK")
 
         res = put('%s/api/SIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load SIR: OK"
+        print("Load SIR: OK")
 
         res = put('%s/api/Threshold' % base, data={'infected': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load Threshold: OK"
+        print("Load Threshold: OK")
 
         res = put('%s/api/KerteszThreshold' % base,
                   data={'infected': 0.1, 'blocked': 0.1, 'adopter_rate': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load KerteszThreshold: OK"
+        print("Load KerteszThreshold: OK")
 
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load Profile: OK"
+        print("Load Profile: OK")
 
         res = put('%s/api/ProfileThreshold' % base, data={'infected': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load ProfileThreshold: OK"
+        print("Load ProfileThreshold: OK")
 
         res = put('%s/api/IndependentCascades' % base, data={'infected': 0.1, 'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Load Independent Cascades: OK"
+        print("Load Independent Cascades: OK")
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token6}).json()
         self.assertEqual(len(res['Models'].keys()), 8)
-        print "Display Experiment Resources: OK"
+        print("Display Experiment Resources: OK")
 
         res = post('%s/api/Iteration' % base, data={'token': token6, 'models': ''}).json()
         self.assertEqual(len(res.keys()), 8)
-        print "Single Iteration: OK"
+        print("Single Iteration: OK")
 
         res = put('%s/api/ExperimentStatus' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Experiment Reset: OK"
+        print("Experiment Reset: OK")
 
         res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token6}).json()
         self.assertEqual(len(res.keys()), 8)
-        print "Iteration Bunch: OK"
+        print("Iteration Bunch: OK")
 
         res = put('%s/api/ExperimentStatus' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Experiment Reset: OK"
+        print("Experiment Reset: OK")
 
         # res = post('%s/api/CompleteRun' % base, data={'token': token6}).json()
         # self.assertEqual(len(res.keys()), 8)
-        # print "Complete Run: OK"
+        # print("Complete Run: OK"
 
         res = delete('%s/api/Networks' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Network Destroy: OK"
+        print("Network Destroy: OK")
 
         res = delete('%s/api/Models' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)
-        print "Models Destroy: OK"
+        print("Models Destroy: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token6})
         self.assertEqual(res.status_code, 200)
@@ -263,72 +271,73 @@ class RESTTest(unittest.TestCase):
 
         mods = get('%s/api/Models' % base).json()
         self.assertIn('endpoints', mods)
-        print "Retrieve models enpoints: OK"
+        print("Retrieve models enpoints: OK")
 
         # Models
         res = put('%s/api/SI' % base, data={'infected': 0.1, 'beta': 0.2, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load SI: OK"
+        print("Load SI: OK")
 
         res = put('%s/api/SIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load SIS: OK"
+        print("Load SIS: OK")
 
         res = put('%s/api/SIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma': 0.01, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load SIR: OK"
+        print("Load SIR: OK")
 
         res = put('%s/api/Threshold' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Threshold: OK"
+        print("Load Threshold: OK")
 
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Profile: OK"
+        print("Load Profile: OK")
 
         res = put('%s/api/ProfileThreshold' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load ProfileThreshold: OK"
+        print("Load ProfileThreshold: OK")
 
         res = put('%s/api/IndependentCascades' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Independent Cascades: OK"
+        print("Load Independent Cascades: OK")
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token}).json()
         self.assertEqual(len(res['Models']), 7)
-        print "Display Experiment Resources: OK"
+        print("Display Experiment Resources: OK")
 
         res = post('%s/api/GetGraph' % base, data={'token': token}).json()
         self.assertNotEquals(res.keys(), 0)
-        print "Get Graph: OK"
+        print("Get Graph: OK")
 
-        conf = {'nodes': {'threshold': {}, 'profile': {}}, 'edges': [], 'model': {'initial_infected': []}}
+        conf = {'nodes': {'threshold': {}, 'profile': {}}, 'edges': [], 'model': {}, 'status': {}}
         nds = []
         for n in res['nodes']:
             nid = n['id']
             nds.append(int(nid))
             th = np.random.random_sample()
             pr = np.random.random_sample()
-            conf['nodes']['threshold'][nid] = th
-            conf['nodes']['profile'][nid] = pr
+            conf['nodes']['threshold'][nid] = float(th)
+            conf['nodes']['profile'][nid] = float(pr)
 
         for e in res['links']:
             u = int(e['source'])
             v = int(e['target'])
             w = np.random.random_sample()
-            conf['edges'].append({'source': u, 'target': v, 'weight': w})
+            conf['edges'].append({'source': int(u), 'target': int(v), 'weight': float(w)})
 
-        infected = np.random.choice(nds, len(nds)/10)
-        conf['model']['initial_infected'] = list(infected)
+        infected = np.random.choice(nds, int(len(nds)/10))
+        conf['status']['Infected'] = [int(i) for i in infected]
+
         cs = json.dumps(conf)
 
         res = put('%s/api/Configure' % base, data={'status': cs, 'models': '', 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Advanced Configuration: OK"
+        print("Advanced Configuration: OK")
 
         res = post('%s/api/Iteration' % base, data={'token': token, 'models': ''}).json()
         self.assertEqual(len(res.keys()), 7)
-        print "Single Iteration: OK"
+        print("Single Iteration: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token})
         self.assertEqual(res.status_code, 200)
@@ -340,31 +349,31 @@ class RESTTest(unittest.TestCase):
 
         res = get('%s/api/Exploratory' % base)
         self.assertEqual(res.status_code, 200)
-        print "List Exploratories: OK"
+        print("List Exploratories: OK")
 
         res = post('%s/api/Exploratory' % base, data={'exploratory': 'ClusteredBA_top', 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Explortory: OK"
+        print("Load Explortory: OK")
 
         res = put('%s/api/Threshold' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Threshold: OK"
+        print("Load Threshold: OK")
 
         res = put('%s/api/Profile' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Profile: OK"
+        print("Load Profile: OK")
 
         res = put('%s/api/ProfileThreshold' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load ProfileThreshold: OK"
+        print("Load ProfileThreshold: OK")
 
         res = put('%s/api/IndependentCascades' % base, data={'infected': 0.1, 'token': token})
         self.assertEqual(res.status_code, 200)
-        print "Load Independent Cascades: OK"
+        print("Load Independent Cascades: OK")
 
         res = post('%s/api/Iteration' % base, data={'token': token, 'models': ''}).json()
         self.assertEqual(len(res.keys()), 4)
-        print "Single Iteration: OK"
+        print("Single Iteration: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token})
         self.assertEqual(res.status_code, 200)
@@ -375,11 +384,43 @@ class RESTTest(unittest.TestCase):
         g = nx.barabasi_albert_graph(100000, 4)
         js = json_graph.node_link_data(g)
         jd = json.dumps(js)
-        res = put('http://localhost:5000/api/UploadNetwork', data={'file': str(jd), 'directed': False, 'token': token})
+        res = put('http://localhost:5000/api/UploadNetwork', data={'file': str(jd), 'directed': False, 'dynamic': False, 'token': token})
         self.assertEqual(res.status_code, 200)
         res = post('%s/api/GetGraph' % base, data={'token': token}).json()
         self.assertNotEquals(res.keys(), 0)
         res = delete('%s/api/Experiment' % base, data={'token': token})
+        self.assertEqual(res.status_code, 200)
+
+    def test_generate_dynamic_er_graphs(self):
+        res = get('%s/api/Experiment' % base).json()
+        token2 = res['token']
+        self.assertIsNotNone(token2)
+
+        res = get('%s/api/Generators' % base).json()
+        endpoints = res['endpoints']
+
+        for e in endpoints:
+            if e['name'] == 'ERGraph':
+                gr = put("%s%s" % (base, e['uri']), data={'n': 400, 'p': 0.05, 'directed': True, 't': 4, 'token': token2})
+                self.assertEqual(gr.status_code, 200)
+
+        res = put('%s/api/dSI' % base, data={'infected': 0.1, 'beta': 0.2, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSI: OK")
+
+        res = put('%s/api/dSIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.1, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSIS: OK")
+
+        res = put('%s/api/dSIR' % base, data={'infected': 0.1, 'beta': 0.2, 'gamma':0.1, 'token': token2})
+        self.assertEqual(res.status_code, 200)
+        print("Load dSIR: OK")
+
+        res = post('%s/api/IterationBunch' % base, data={'bunch': 10, 'models': '', 'token': token2}).json()
+        self.assertEqual(len(res.keys()), 3)
+        print("Iteration Bunch: OK")
+
+        res = delete('%s/api/Experiment' % base, data={'token': token2})
         self.assertEqual(res.status_code, 200)
 
 if __name__ == '__main__':
