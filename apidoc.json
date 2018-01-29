@@ -1,6 +1,6 @@
 {
   "name": "(N)etwork (D)iffusion library REST service",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "REST service for the simulation of diffusion models over networks.",
   "title": "NDlib REST",
   "url": "http://127.0.0.1:5000",
@@ -46,6 +46,7 @@
     "qvoter",
     "majority",
     "sznajd",
+    "AlgorithmicBias",
     "dsi",
     "dsis",
     "dsis",

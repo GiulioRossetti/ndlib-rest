@@ -35,6 +35,7 @@ import ndlib.models.opinions.QVoterModel as qvm
 import ndlib.models.opinions.MajorityRuleModel as mrm
 import ndlib.models.opinions.SznajdModel as sm
 import ndlib.models.opinions.CognitiveOpDynModel as cop
+import ndlib.models.opinions.AlgorithmicBiasModel as ab
 
 import ndlib.models.dynamic.DynSIModel as dsi
 import ndlib.models.dynamic.DynSIRModel as dsir
@@ -1913,6 +1914,55 @@ class CognitiveOpinionDynamic(Resource):
 
         return {'Message': 'Resource created'}, success
 
+
+class AlgorithmicBias(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/AlgorithmicBias    AlgorithmicBias
+            @ApiDescription Instantiate a AlgorithmicBias Model on the network bound to the provided token.
+            @apiVersion 2.0.1
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} epsilon    Bounded confidence threshold.
+            @apiParam {Number{0-100}} gamma Algorithmic bias.
+
+
+            @apiName AlgorithmicBias
+            @apiGroup Opinion Dynamics
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/AlgorithmicBias', data={'token': token, 'epsilon': percentage, 'gamma': gamma})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        if 'epsilon' in request.form and request.form['epsilon'] != "":
+            epsilon = float(request.form['epsilon'])
+
+        if 'gamma' in request.form and request.form['gamma'] != "":
+            gamma = float(request.form['gamma'])
+
+        db_net = load_data("data/db/%s/net" % token)
+
+        g = db_net['net']['g']
+        db_net.close()
+
+        model = ab.AlgorithmicBiasModel(g)
+
+        config = mc.Configuration()
+        config.add_model_parameter("epsilon",  epsilon)
+        config.add_model_parameter("gamma", gamma)
+        config.add_model_parameter('percentage_infected', 0.1)
+        model.set_initial_status(config)
+
+        try:
+            config_model(token, "AlgorithmicBias", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
 ######## Dynamic ##########
 
 
@@ -2435,6 +2485,7 @@ api.add_resource(Voter, '/api/Voter')
 api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')
 api.add_resource(Sznajd, '/api/Sznajd')
+api.add_resource(AlgorithmicBias, '/api/AlgorithmicBias')
 
 api.add_resource(dSI, '/api/dSI')
 api.add_resource(dSIR, '/api/dSIR')
