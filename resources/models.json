@@ -7,6 +7,11 @@
         "token": "access token",
         "infected": "The initial percentage of infected nodes.",
         "threshold":"A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -17,6 +22,65 @@
         "beta": "Infection rate",
         "gamma": "Recovery rate",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Removed": 2
+      }
+    },
+    {
+      "name": "SEIR",
+      "uri": "/api/SEIR",
+      "params": {
+        "token": "access token",
+        "beta": "Infection rate",
+        "gamma": "Recovery rate",
+        "alpha": "Incubation period",
+        "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Removed": 3,
+        "Exposed": 2
+      }
+    },
+    {
+      "name": "SEIS",
+      "uri": "/api/SEIS",
+      "params": {
+        "token": "access token",
+        "beta": "Infection rate",
+        "lambda": "Recovery rate",
+        "alpha": "Incubation period",
+        "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Exposed": 2
+      }
+    },
+    {
+      "name": "SWIR",
+      "uri": "/api/SWIR",
+      "params": {
+        "token": "access token",
+        "kappa": "Infection rate from susceptible state",
+        "mu": "weakened rate",
+        "nu": "infection rate from weakened state",
+        "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Weakened": 2,
+        "Removed": 3
       }
     },
     {
@@ -26,6 +90,11 @@
         "token": "access token",
         "beta": "Infection rate",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -36,6 +105,11 @@
         "beta": "Infection rate",
         "lambda": "Recovery rate",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -45,6 +119,12 @@
         "token": "access token",
         "profile":  "fixed profile value for all the nodes: if not specified the profile will be assigned using a normal distribution.",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Blocked": -1
       }
     },
     {
@@ -55,6 +135,12 @@
         "profile":  "2 fixed profile value for all the nodes: if not specified the profile will be assigned using a normal distribution.",
         "threshold":"A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution.",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Blocked": -1
       }
     },
     {
@@ -63,6 +149,12 @@
       "params": {
         "token": "access token",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Removed": 2
       }
     },
     {
@@ -71,6 +163,11 @@
       "params": {
         "token": "access token",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -80,6 +177,11 @@
         "token": "access token",
         "infected": "The initial percentage of infected nodes.",
         "q": "Number of neighbours that affect the opinion of an agent"
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -89,6 +191,11 @@
         "token": "access token",
         "infected": "The initial percentage of infected nodes.",
         "q": "The group size"
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -97,6 +204,11 @@
       "params": {
         "token": "access token",
         "infected": "The initial percentage of infected nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1
       }
     },
     {
@@ -108,6 +220,12 @@
         "threshold": "A fixed threshold value for all the nodes: if not specified the thresholds will be assigned using a normal distribution.",
         "adopter_rate": "The adopter rate. Fixed probability of self-infection per iteration.",
         "blocked": "Percentage of blocked nodes."
+      },
+      "discrete": true,
+      "statuses": {
+        "Susceptible": 0,
+        "Infected": 1,
+        "Blocked": -1
       }
     },
     {
@@ -116,7 +234,24 @@
       "params": {
         "token": "access token",
         "I": "The external information."
+      },
+      "discrete": false,
+      "statuses": {
+      }
+    },
+    {
+      "name": "Algorithmic Bias",
+      "uri": "/api/AlgorithmicBias",
+      "params": {
+        "token": "access token",
+        "epsilon": "bounded confidence threshold",
+        "gamma": "algorithmic bias"
+      },
+      "discrete": false,
+      "statuses": {
+        "Infected": 0
       }
     }
+
   ]
 }

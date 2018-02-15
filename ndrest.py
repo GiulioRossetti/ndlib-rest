@@ -25,6 +25,7 @@ import ndlib.models.epidemics.SIModel as si
 import ndlib.models.epidemics.SISModel as sis
 import ndlib.models.epidemics.SEIRModel as seir
 import ndlib.models.epidemics.SEISModel as seis
+import ndlib.models.epidemics.SWIRModel as swir
 import ndlib.models.epidemics.ProfileModel as ac
 import ndlib.models.epidemics.ProfileThresholdModel as pt
 import ndlib.models.epidemics.IndependentCascadesModel as ic
@@ -1453,6 +1454,56 @@ class SEIR(Resource):
         return {'Message': 'Resource created'}, success
 
 
+class SWIR(Resource):
+
+    def put(self):
+        """
+            @api {put} /api/SWIR    SWIR
+            @ApiDescription Instantiate a SWIR Model on the network bound to the provided token.
+            @apiVersion 2.0.0
+            @apiParam {String} token    The token.
+            @apiParam {Number{0-1}} infected    The initial percentage of infected nodes.
+            @apiParam {Number{0-1}}  kappa    Infection rate.
+            @apiParam {Number{0-1}}  mu    Recovery rate.
+            @apiParam {Number{0-1}}  nu   Incubation period.
+            @apiName swir
+            @apiGroup Epidemics
+            @apiExample [python request] Example usage:
+            put('http://localhost:5000/api/SWIR', data={'kappa': kappa, 'mu': mu, 'nu': nu, 'infected': percentage, 'token': token})
+        """
+        token = str(request.form['token'])
+
+        if not os.path.exists("data/db/%s" % token):
+            return {"Message": "Wrong Token"}, bad_request
+
+        try:
+            kappa = request.form['kappa']
+            mu = request.form['mu']
+            nu = request.form['nu']
+            infected = request.form['infected']
+            if infected == '':
+                infected = 0.05
+
+            db_net = load_data("data/db/%s/net" % token)
+
+            g = db_net['net']['g']
+            db_net.close()
+
+            model = swir.SWIRModel(g)
+            config = mc.Configuration()
+            config.add_model_parameter('percentage_infected', float(infected))
+            config.add_model_parameter('kappa', float(kappa))
+            config.add_model_parameter('mu', float(mu))
+            config.add_model_parameter('nu', float(nu))
+            model.set_initial_status(config)
+
+            config_model(token, "SWIR", model)
+        except:
+            return {'Message': 'Parameter error'}, bad_request
+
+        return {'Message': 'Resource created'}, success
+
+
 class Profile(Resource):
 
     def put(self):
@@ -2486,6 +2537,7 @@ api.add_resource(QVoter, '/api/QVoter')
 api.add_resource(MaJorityRule, '/api/MajorityRule')
 api.add_resource(Sznajd, '/api/Sznajd')
 api.add_resource(AlgorithmicBias, '/api/AlgorithmicBias')
+api.add_resource(SWIR, '/api/SWIR')
 
 api.add_resource(dSI, '/api/dSI')
 api.add_resource(dSIR, '/api/dSIR')

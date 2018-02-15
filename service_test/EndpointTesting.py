@@ -127,6 +127,10 @@ class RESTTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         print("Load SI: OK")
 
+        res = put('%s/api/SWIR' % base, data={'infected': 0.1, 'kappa': 0.2, 'mu': 0.2, 'nu': 0.2, 'token': token5})
+        self.assertEqual(res.status_code, 200)
+        print("Load SWIR: OK")
+
         res = put('%s/api/SIS' % base, data={'infected': 0.1, 'beta': 0.2, 'lambda': 0.01, 'token': token5})
         self.assertEqual(res.status_code, 200)
         print("Load SIS: OK")
@@ -164,7 +168,7 @@ class RESTTest(unittest.TestCase):
         print("Load Independent Cascades: OK")
 
         res = post('%s/api/ExperimentStatus' % base, data={'token': token5}).json()
-        self.assertEqual(len(res['Models']), 10)
+        self.assertEqual(len(res['Models']), 11)
         print("Display Experiment Resources: OK")
 
         res = delete('%s/api/Experiment' % base, data={'token': token5})
@@ -270,6 +274,7 @@ class RESTTest(unittest.TestCase):
                 self.assertEqual(gr.status_code, 200)
 
         mods = get('%s/api/Models' % base).json()
+        print(mods)
         self.assertIn('endpoints', mods)
         print("Retrieve models enpoints: OK")
 
