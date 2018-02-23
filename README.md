@@ -7,6 +7,7 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 #### Tools
 * REST service: ndrest.py
   * Web API docs: http://127.0.0.1:5000/docs
+  * Visual Framework: http://127.0.0.1:8080
   * Unittest: ndlib-rest/service_test
 * Python REST client: ndlib-rest/client
 
@@ -42,7 +43,7 @@ apidoc -i ndlib-rest/ -o ndlib-rest/static/docs
 
 
 #### Docker Container
-The web application is shipped in a [Docker](https://www.docker.com/) container.
+The web application (REST service and Viz framework) is shipped as a [Docker](https://www.docker.com/) container.
 You can use the Dockerfile to create a new image and run the web application using the gunicorn application server.
 
 To create the Docker image, install Docker on your machine.
@@ -54,7 +55,7 @@ docker build -t [tagname_for_your_image] .
 The command create a new image with the specified name. Pay attention to the ```.``` a the end of the command.
 
 ```
-docker run -d -i -p 5000:5000 [tagname_for_your_image] 
+docker run -d -i -p 5000:5000 -p 8080:8080 [tagname_for_your_image] 
 ```
 This command execute a container with the previous image, bind the local port 5000 to the internal port of the container. 
 The option ```-d``` make the container to run in the background (detached)
@@ -68,6 +69,19 @@ To stop a container
 
 ```
 docker stop container_name
+```
+ ##### Prebuilt Docker image
+ 
+To avoid docker image building just download the full container (beta version)
+ 
+```
+docker pull rossetti/ndrest:ndrest_beta
+```
+ 
+Once the image is ready run it as:
+
+```
+docker run -d -i -p 5000:5000 -p 8080:8080 rossetti/ndrest:ndrest_beta
 ```
 
 ## REST service details
