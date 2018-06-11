@@ -7,7 +7,6 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 #### Tools
 * REST service: ndrest.py
   * Web API docs: http://127.0.0.1:5000/docs
-  * Visual Framework: http://127.0.0.1:8080
   * Unittest: ndlib-rest/service_test
 * Python REST client: ndlib-rest/client
 
