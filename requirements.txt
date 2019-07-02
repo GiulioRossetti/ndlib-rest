@@ -6,5 +6,5 @@ flask_cors
 requests
 numpy
 scipy
-ndlib
+ndlib==4.0.2
 gunicorn
