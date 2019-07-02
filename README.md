@@ -13,7 +13,7 @@ This project offers a REST interface for the [ndlib](https://github.com/GiulioRo
 
 Python 3.6 required dependencies:
 
-- [ndlib](https://github.com/GiulioRossetti/ndlib)>=4.0.0
+- [ndlib](https://github.com/GiulioRossetti/ndlib)==4.0.2
 - flask==0.12
 - flask-cors==3.0.2
 - flask_restful==0.3.5
